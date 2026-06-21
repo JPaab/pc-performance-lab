@@ -38,7 +38,7 @@ public class HardwareSnapshotController {
         HardwareSnapshot createdSnapshot = hardwareSnapshotService.create(buildId, request);
 
         return ResponseEntity
-                .created(URI.create("/api/snapshots/" + createdSnapshot.id()))
+                .created(URI.create("/api/snapshots/" + createdSnapshot.getId()))
                 .body(createdSnapshot);
     }
 }
