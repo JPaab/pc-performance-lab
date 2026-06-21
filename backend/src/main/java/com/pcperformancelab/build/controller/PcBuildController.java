@@ -35,7 +35,7 @@ public class PcBuildController {
         PcBuild createdBuild = pcBuildService.create(request);
 
         return ResponseEntity
-                .created(URI.create("/api/builds/" + createdBuild.id()))
+                .created(URI.create("/api/builds/" + createdBuild.getId()))
                 .body(createdBuild);
     }
 }

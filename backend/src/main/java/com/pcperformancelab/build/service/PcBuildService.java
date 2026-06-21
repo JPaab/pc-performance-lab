@@ -2,43 +2,34 @@ package com.pcperformancelab.build.service;
 
 import com.pcperformancelab.build.dto.CreatePcBuildRequest;
 import com.pcperformancelab.build.model.PcBuild;
+import com.pcperformancelab.build.repository.PcBuildRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 public class PcBuildService {
 
-    private final Map<Long, PcBuild> builds = new LinkedHashMap<>();
-    private final AtomicLong idGenerator = new AtomicLong(1);
+    private final PcBuildRepository pcBuildRepository;
+
+    public PcBuildService(PcBuildRepository pcBuildRepository) {
+        this.pcBuildRepository = pcBuildRepository;
+    }
 
     public List<PcBuild> findAll() {
-        return new ArrayList<>(builds.values());
+        return pcBuildRepository.findAll();
     }
 
     public PcBuild findById(Long id) {
-        PcBuild build = builds.get(id);
-
-        if (build == null) {
-            throw new ResponseStatusException(NOT_FOUND, "PC build not found");
-        }
-
-        return build;
+        return pcBuildRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "PC build not found"));
     }
 
     public PcBuild create(CreatePcBuildRequest request) {
-        Long id = idGenerator.getAndIncrement();
-
         PcBuild build = new PcBuild(
-                id,
                 request.name(),
                 request.cpu(),
                 request.gpu(),
@@ -47,11 +38,9 @@ public class PcBuildService {
                 request.storage(),
                 request.monitor(),
                 request.operatingSystem(),
-                request.gpuDriver(),
-                Instant.now()
+                request.gpuDriver()
         );
 
-        builds.put(id, build);
-        return build;
+        return pcBuildRepository.save(build);
     }
 }
