@@ -26,20 +26,20 @@ public class PerformanceComparisonService {
 
         List<MetricComparison> metrics = new ArrayList<>();
 
-        metrics.add(compareHigherIsBetter("Average FPS", baseline.averageFps(), comparison.averageFps(), "fps"));
-        metrics.add(compareHigherIsBetter("1% Low FPS", baseline.onePercentLowFps(), comparison.onePercentLowFps(), "fps"));
-        metrics.add(compareHigherIsBetter("0.1% Low FPS", baseline.zeroPointOnePercentLowFps(), comparison.zeroPointOnePercentLowFps(), "fps"));
+        metrics.add(compareHigherIsBetter("Average FPS", baseline.getAverageFps(), comparison.getAverageFps(), "fps"));
+        metrics.add(compareHigherIsBetter("1% Low FPS", baseline.getOnePercentLowFps(), comparison.getOnePercentLowFps(), "fps"));
+        metrics.add(compareHigherIsBetter("0.1% Low FPS", baseline.getZeroPointOnePercentLowFps(), comparison.getZeroPointOnePercentLowFps(), "fps"));
 
-        metrics.add(compareLowerIsBetter("P95 Frame Time", baseline.p95FrameTimeMs(), comparison.p95FrameTimeMs(), "ms"));
-        metrics.add(compareLowerIsBetter("P99 Frame Time", baseline.p99FrameTimeMs(), comparison.p99FrameTimeMs(), "ms"));
-        metrics.add(compareLowerIsBetter("P99.9 Frame Time", baseline.p999FrameTimeMs(), comparison.p999FrameTimeMs(), "ms"));
+        metrics.add(compareLowerIsBetter("P95 Frame Time", baseline.getP95FrameTimeMs(), comparison.getP95FrameTimeMs(), "ms"));
+        metrics.add(compareLowerIsBetter("P99 Frame Time", baseline.getP99FrameTimeMs(), comparison.getP99FrameTimeMs(), "ms"));
+        metrics.add(compareLowerIsBetter("P99.9 Frame Time", baseline.getP999FrameTimeMs(), comparison.getP999FrameTimeMs(), "ms"));
 
-        metrics.add(compareLowerIsBetter("Stutter Count", toDouble(baseline.stutterCount()), toDouble(comparison.stutterCount()), "count"));
-        metrics.add(compareLowerIsBetter("Dropped Frames", toDouble(baseline.droppedFrames()), toDouble(comparison.droppedFrames()), "frames"));
+        metrics.add(compareLowerIsBetter("Stutter Count", toDouble(baseline.getStutterCount()), toDouble(comparison.getStutterCount()), "count"));
+        metrics.add(compareLowerIsBetter("Dropped Frames", toDouble(baseline.getDroppedFrames()), toDouble(comparison.getDroppedFrames()), "frames"));
 
         return new PerformanceComparisonResult(
-                baseline.id(),
-                comparison.id(),
+                baseline.getId(),
+                comparison.getId(),
                 buildLabel(baseline),
                 buildLabel(comparison),
                 metrics,
@@ -105,11 +105,11 @@ public class PerformanceComparisonService {
     }
 
     private String buildLabel(PerformanceSession session) {
-        if (session.scenario() == null || session.scenario().isBlank()) {
-            return session.gameName();
+        if (session.getScenario() == null || session.getScenario().isBlank()) {
+            return session.getGameName();
         }
 
-        return session.gameName() + " - " + session.scenario();
+        return session.getGameName() + " - " + session.getScenario();
     }
 
     private String buildSummary(List<MetricComparison> metrics) {

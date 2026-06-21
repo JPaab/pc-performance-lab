@@ -38,7 +38,7 @@ public class PerformanceSessionController {
         PerformanceSession createdSession = performanceSessionService.create(snapshotId, request);
 
         return ResponseEntity
-                .created(URI.create("/api/sessions/" + createdSession.id()))
+                .created(URI.create("/api/sessions/" + createdSession.getId()))
                 .body(createdSession);
     }
 }
