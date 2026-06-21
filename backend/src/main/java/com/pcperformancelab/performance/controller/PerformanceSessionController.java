@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import com.pcperformancelab.performance.importer.CapFrameXImportService;
 
 import java.io.IOException;
 import java.net.URI;
@@ -21,15 +22,18 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
 @RequestMapping("/api")
 public class PerformanceSessionController {
 
+    private final CapFrameXImportService capFrameXImportService;
     private final PerformanceSessionService performanceSessionService;
     private final ObjectMapper objectMapper;
 
     public PerformanceSessionController(
             PerformanceSessionService performanceSessionService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            CapFrameXImportService capFrameXImportService
     ) {
         this.performanceSessionService = performanceSessionService;
         this.objectMapper = objectMapper;
+        this.capFrameXImportService = capFrameXImportService;
     }
 
     @GetMapping("/snapshots/{snapshotId}/sessions")
@@ -67,6 +71,26 @@ public class PerformanceSessionController {
         }
 
         CreatePerformanceSessionRequest request = readSessionRequest(file);
+        PerformanceSession createdSession = performanceSessionService.create(snapshotId, request);
+
+        return ResponseEntity
+                .created(URI.create("/api/sessions/" + createdSession.getId()))
+                .body(createdSession);
+    }
+
+    @PostMapping(
+            value = "/snapshots/{snapshotId}/sessions/import/capframex",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<PerformanceSession> importFromCapFrameX(
+            @PathVariable Long snapshotId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        if (file.isEmpty()) {
+            throw new ResponseStatusException(BAD_REQUEST, "CapFrameX JSON file is required");
+        }
+
+        CreatePerformanceSessionRequest request = capFrameXImportService.parse(file);
         PerformanceSession createdSession = performanceSessionService.create(snapshotId, request);
 
         return ResponseEntity
