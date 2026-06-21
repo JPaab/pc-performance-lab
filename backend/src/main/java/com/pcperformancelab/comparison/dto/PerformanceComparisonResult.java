@@ -8,6 +8,7 @@ public record PerformanceComparisonResult(
         String baselineLabel,
         String comparisonLabel,
         List<MetricComparison> metrics,
+        List<MetricComparison> sensorMetrics,
         String summary
 ) {
 }

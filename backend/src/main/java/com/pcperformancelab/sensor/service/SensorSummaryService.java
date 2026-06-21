@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class SensorSummaryService {
@@ -34,6 +35,11 @@ public class SensorSummaryService {
         return sensorSummaryRepository.findAllBySession_Id(sessionId);
     }
 
+    public Optional<SensorSummary> findLatestBySessionId(Long sessionId) {
+        performanceSessionService.findById(sessionId);
+
+        return sensorSummaryRepository.findTopBySession_IdOrderByCreatedAtDesc(sessionId);
+    }
     public SensorSummary importHwInfoCsv(Long sessionId, MultipartFile file) {
         PerformanceSession session = performanceSessionService.findById(sessionId);
         SensorSummaryData data = hwInfoCsvImportService.parse(file);
