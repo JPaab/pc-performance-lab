@@ -54,8 +54,8 @@ export function CreateBuildForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!form.name || !form.cpu || !form.gpu || form.ramGb <= 0) {
-      setStatus("Name, CPU, GPU and RAM are required.");
+    if (!form.name || !form.cpu || !form.gpu) {
+      setStatus("Build name, CPU and GPU are required.");
       return;
     }
 
@@ -86,10 +86,10 @@ export function CreateBuildForm() {
         New build
       </p>
 
-      <h2 className="mt-2 text-2xl font-semibold">Register PC</h2>
+      <h2 className="mt-2 text-2xl font-semibold">Register machine</h2>
 
       <p className="mt-2 text-sm text-zinc-500">
-        Only the fixed hardware. Tweaks go into snapshots.
+        Keep this as fixed hardware. BIOS and OS changes belong to snapshots.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
@@ -97,7 +97,7 @@ export function CreateBuildForm() {
           label="Build name"
           value={form.name}
           onChange={(value) => updateField("name", value)}
-          placeholder="Main Gaming PC"
+          placeholder="Main 12700K / 3080 Ti"
         />
 
         <TextInput
@@ -111,7 +111,7 @@ export function CreateBuildForm() {
           label="GPU"
           value={form.gpu}
           onChange={(value) => updateField("gpu", value)}
-          placeholder="RTX 3080 Ti"
+          placeholder="MSI RTX 3080 Ti Gaming X Trio"
         />
 
         <NumberInput
@@ -134,28 +134,28 @@ export function CreateBuildForm() {
               label="Motherboard"
               value={form.motherboard}
               onChange={(value) => updateField("motherboard", value)}
-              placeholder="MSI MAG Z690 Tomahawk"
+              placeholder="MSI MAG Z690 Tomahawk WIFI DDR4"
             />
 
             <TextInput
               label="Storage"
               value={form.storage}
               onChange={(value) => updateField("storage", value)}
-              placeholder="Corsair MP600 Pro XT"
+              placeholder="Corsair MP600 Pro XT 1TB"
             />
 
             <TextInput
               label="Monitor"
               value={form.monitor}
               onChange={(value) => updateField("monitor", value)}
-              placeholder="AOC 240Hz"
+              placeholder="AOC 240Hz 1080p"
             />
 
             <TextInput
               label="Operating system"
               value={form.operatingSystem}
               onChange={(value) => updateField("operatingSystem", value)}
-              placeholder="Windows 11 / AtlasOS"
+              placeholder="Windows 11 AtlasOS 25H2"
             />
 
             <TextInput
