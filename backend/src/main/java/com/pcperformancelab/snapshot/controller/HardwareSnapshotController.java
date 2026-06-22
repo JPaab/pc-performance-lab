@@ -25,6 +25,11 @@ public class HardwareSnapshotController {
         return hardwareSnapshotService.findAllByBuildId(buildId);
     }
 
+    @GetMapping("/snapshots")
+    public List<HardwareSnapshot> findAll() {
+        return hardwareSnapshotService.findAll();
+    }
+
     @GetMapping("/snapshots/{id}")
     public HardwareSnapshot findById(@PathVariable Long id) {
         return hardwareSnapshotService.findById(id);

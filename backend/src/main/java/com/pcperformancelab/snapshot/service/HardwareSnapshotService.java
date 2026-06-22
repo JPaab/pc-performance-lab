@@ -26,6 +26,10 @@ public class HardwareSnapshotService {
         this.pcBuildService = pcBuildService;
     }
 
+    public List<HardwareSnapshot> findAll() {
+        return hardwareSnapshotRepository.findAll();
+    }
+
     public List<HardwareSnapshot> findAllByBuildId(Long buildId) {
         pcBuildService.findById(buildId);
 
