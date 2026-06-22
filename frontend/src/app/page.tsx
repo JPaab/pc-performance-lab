@@ -161,6 +161,12 @@ export default async function Home() {
           </p>
           <div className="mt-6">
             <Link
+              href="/builds"
+              className="inline-flex rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
+            >
+              Manage builds
+            </Link>
+            <Link
               href="/sessions"
               className="inline-flex rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
             >
