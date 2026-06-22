@@ -26,6 +26,10 @@ public class PerformanceSessionService {
         this.hardwareSnapshotService = hardwareSnapshotService;
     }
 
+    public List<PerformanceSession> findAll() {
+        return performanceSessionRepository.findAll();
+    }
+
     public List<PerformanceSession> findAllBySnapshotId(Long snapshotId) {
         hardwareSnapshotService.findById(snapshotId);
 

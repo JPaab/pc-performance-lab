@@ -41,6 +41,11 @@ public class PerformanceSessionController {
         return performanceSessionService.findAllBySnapshotId(snapshotId);
     }
 
+    @GetMapping("/sessions")
+    public List<PerformanceSession> findAll() {
+        return performanceSessionService.findAll();
+    }
+
     @GetMapping("/sessions/{id}")
     public PerformanceSession findById(@PathVariable Long id) {
         return performanceSessionService.findById(id);
