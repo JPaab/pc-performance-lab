@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { buildApiUrl } from "@/lib/api";
 
@@ -27,6 +28,7 @@ type SensorSummary = {
   sessionId: number;
   sourceType: string;
   sampleCount: number;
+
   cpuPackageTempAvg: number | null;
   cpuPackageTempMax: number | null;
   cpuCoreMaxTempMax: number | null;
@@ -35,6 +37,7 @@ type SensorSummary = {
   totalCpuUsageAvg: number | null;
   physicalMemoryLoadAvg: number | null;
   physicalMemoryLoadMax: number | null;
+
   gpuTemperatureAvg: number | null;
   gpuTemperatureMax: number | null;
   gpuHotSpotTemperatureAvg: number | null;
@@ -48,8 +51,29 @@ type SensorSummary = {
   gpuCoreLoadMax: number | null;
   gpuMemoryUsageAvg: number | null;
   gpuMemoryUsageMax: number | null;
+
+  gpuMemoryJunctionTemperatureAvg: number | null;
+  gpuMemoryJunctionTemperatureMax: number | null;
+  gpuEffectiveClockAvg: number | null;
+  gpuEffectiveClockMax: number | null;
+  cpuAverageEffectiveClockAvg: number | null;
+  cpuAverageEffectiveClockMax: number | null;
+
+  cpuThermalThrottlingDetected: boolean;
+  cpuPowerLimitDetected: boolean;
+  cpuLimitReasonsDetected: boolean;
+
+  gpuPerformanceLimitDetected: boolean;
+  gpuPowerLimitDetected: boolean;
+  gpuThermalLimitDetected: boolean;
+  gpuReliabilityVoltageLimitDetected: boolean;
+  gpuMaxOperatingVoltageLimitDetected: boolean;
+  gpuUtilizationLimitDetected: boolean;
+
   createdAt: string;
 };
+
+type HealthTone = "good" | "warning" | "bad" | "info";
 
 async function getSession(id: string): Promise<PerformanceSession | null> {
   try {
@@ -329,8 +353,8 @@ function SensorSection({
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-zinc-500">
-          Sensor data is separated by thermals, power and clocks so it is easier
-          to read. Thermal throttling and limiter alerts come next.
+          Thermals, power, clocks and limiter flags from the imported HWiNFO
+          CSV.
         </p>
       </div>
 
@@ -368,84 +392,121 @@ function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
 
       <div className="grid gap-0 lg:grid-cols-3">
         <SensorGroup title="Thermals">
-          <SensorMetric
-            label="CPU package avg"
-            value={formatNumber(summary.cpuPackageTempAvg, " °C")}
-          />
-          <SensorMetric
-            label="CPU package max"
-            value={formatNumber(summary.cpuPackageTempMax, " °C")}
-          />
-          <SensorMetric
-            label="CPU core max"
-            value={formatNumber(summary.cpuCoreMaxTempMax, " °C")}
-          />
-          <SensorMetric
-            label="GPU avg"
-            value={formatNumber(summary.gpuTemperatureAvg, " °C")}
-          />
-          <SensorMetric
-            label="GPU max"
-            value={formatNumber(summary.gpuTemperatureMax, " °C")}
-          />
-          <SensorMetric
-            label="GPU hotspot max"
-            value={formatNumber(summary.gpuHotSpotTemperatureMax, " °C")}
-          />
+          <SensorSubGroup title="CPU">
+            <SensorMetric
+              label="Package avg"
+              value={formatNumber(summary.cpuPackageTempAvg, " °C")}
+            />
+            <SensorMetric
+              label="Package max"
+              value={formatNumber(summary.cpuPackageTempMax, " °C")}
+            />
+            <SensorMetric
+              label="Core max"
+              value={formatNumber(summary.cpuCoreMaxTempMax, " °C")}
+            />
+          </SensorSubGroup>
+
+          <SensorSubGroup title="GPU">
+            <SensorMetric
+              label="GPU avg"
+              value={formatNumber(summary.gpuTemperatureAvg, " °C")}
+            />
+            <SensorMetric
+              label="GPU max"
+              value={formatNumber(summary.gpuTemperatureMax, " °C")}
+            />
+            <SensorMetric
+              label="Hotspot max"
+              value={formatNumber(summary.gpuHotSpotTemperatureMax, " °C")}
+            />
+            <SensorMetric
+              label="Memory junction max"
+              value={formatNumber(
+                summary.gpuMemoryJunctionTemperatureMax,
+                " °C",
+              )}
+            />
+          </SensorSubGroup>
         </SensorGroup>
 
         <SensorGroup title="Power">
-          <SensorMetric
-            label="CPU power avg"
-            value={formatNumber(summary.cpuPackagePowerAvg, " W")}
-          />
-          <SensorMetric
-            label="CPU power max"
-            value={formatNumber(summary.cpuPackagePowerMax, " W")}
-          />
-          <SensorMetric
-            label="GPU power avg"
-            value={formatNumber(summary.gpuPowerAvg, " W")}
-          />
-          <SensorMetric
-            label="GPU power max"
-            value={formatNumber(summary.gpuPowerMax, " W")}
-          />
-          <SensorMetric
-            label="Memory load avg"
-            value={formatNumber(summary.physicalMemoryLoadAvg, " %")}
-          />
-          <SensorMetric
-            label="Memory load max"
-            value={formatNumber(summary.physicalMemoryLoadMax, " %")}
-          />
+          <SensorSubGroup title="CPU">
+            <SensorMetric
+              label="Package power avg"
+              value={formatNumber(summary.cpuPackagePowerAvg, " W")}
+            />
+            <SensorMetric
+              label="Package power max"
+              value={formatNumber(summary.cpuPackagePowerMax, " W")}
+            />
+          </SensorSubGroup>
+
+          <SensorSubGroup title="GPU">
+            <SensorMetric
+              label="GPU power avg"
+              value={formatNumber(summary.gpuPowerAvg, " W")}
+            />
+            <SensorMetric
+              label="GPU power max"
+              value={formatNumber(summary.gpuPowerMax, " W")}
+            />
+          </SensorSubGroup>
+
+          <SensorSubGroup title="Memory">
+            <SensorMetric
+              label="RAM load avg"
+              value={formatNumber(summary.physicalMemoryLoadAvg, " %")}
+            />
+            <SensorMetric
+              label="RAM load max"
+              value={formatNumber(summary.physicalMemoryLoadMax, " %")}
+            />
+          </SensorSubGroup>
         </SensorGroup>
 
         <SensorGroup title="Clocks / load">
-          <SensorMetric
-            label="GPU clock avg"
-            value={formatNumber(summary.gpuClockAvg, " MHz")}
-          />
-          <SensorMetric
-            label="GPU clock max"
-            value={formatNumber(summary.gpuClockMax, " MHz")}
-          />
-          <SensorMetric
-            label="GPU mem clock"
-            value={formatNumber(summary.gpuMemoryClockAvg, " MHz")}
-          />
-          <SensorMetric
-            label="GPU load avg"
-            value={formatNumber(summary.gpuCoreLoadAvg, " %")}
-          />
-          <SensorMetric
-            label="GPU load max"
-            value={formatNumber(summary.gpuCoreLoadMax, " %")}
-          />
-          <SensorMetric
-            label="CPU usage avg"
-            value={formatNumber(summary.totalCpuUsageAvg, " %")}
-          />
+          <SensorSubGroup title="CPU">
+            <SensorMetric
+              label="CPU effective avg"
+              value={formatNumber(summary.cpuAverageEffectiveClockAvg, " MHz")}
+            />
+            <SensorMetric
+              label="CPU effective max"
+              value={formatNumber(summary.cpuAverageEffectiveClockMax, " MHz")}
+            />
+            <SensorMetric
+              label="CPU usage avg"
+              value={formatNumber(summary.totalCpuUsageAvg, " %")}
+            />
+          </SensorSubGroup>
+
+          <SensorSubGroup title="GPU">
+            <SensorMetric
+              label="GPU clock avg"
+              value={formatNumber(summary.gpuClockAvg, " MHz")}
+            />
+            <SensorMetric
+              label="GPU effective avg"
+              value={formatNumber(summary.gpuEffectiveClockAvg, " MHz")}
+            />
+            <SensorMetric
+              label="Memory clock avg"
+              value={formatNumber(summary.gpuMemoryClockAvg, " MHz")}
+            />
+            <SensorMetric
+              label="GPU load avg"
+              value={formatNumber(summary.gpuCoreLoadAvg, " %")}
+            />
+            <SensorMetric
+              label="GPU load max"
+              value={formatNumber(summary.gpuCoreLoadMax, " %")}
+            />
+            <SensorMetric
+              label="VRAM usage max"
+              value={formatNumber(summary.gpuMemoryUsageMax, " %")}
+            />
+          </SensorSubGroup>
         </SensorGroup>
       </div>
     </article>
@@ -471,40 +532,290 @@ function SessionNotes({
         </p>
       </section>
 
+      <SensorHealthPanel sensorSummary={sensorSummary} />
+    </section>
+  );
+}
+
+function SensorHealthPanel({
+  sensorSummary,
+}: {
+  sensorSummary: SensorSummary | null;
+}) {
+  if (!sensorSummary) {
+    return (
       <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6">
         <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
           Health checks
         </p>
 
         <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-          Run coverage
+          Sensor health
         </h2>
 
-        <div className="mt-5 grid gap-3">
-          <HealthLine
-            label="HWiNFO sensor log"
-            value={
-              sensorSummary
-                ? `Attached · Summary #${sensorSummary.id}`
-                : "Missing"
-            }
-            active={Boolean(sensorSummary)}
-          />
-
-          <HealthLine
-            label="Thermal / power limiter detection"
-            value="Not tracked yet"
-            active={false}
-          />
-        </div>
-
-        <p className="mt-5 text-sm leading-6 text-zinc-500">
-          Thermal throttling, CPU power limits and GPU limiter flags will appear
-          here once HWiNFO limiter parsing is added to the importer.
+        <p className="mt-5 rounded-2xl border border-violet-950/70 bg-black/25 p-4 text-sm text-zinc-500">
+          No HWiNFO sensor summary attached to this session.
         </p>
       </section>
+    );
+  }
+
+  const verdict = getSensorHealthVerdict(sensorSummary);
+
+  return (
+    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6">
+      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
+        Health checks
+      </p>
+
+      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+        Sensor health
+      </h2>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <VerdictCard
+          label="Thermals"
+          value={verdict.thermalStatus}
+          tone={verdict.thermalTone}
+        />
+
+        <VerdictCard
+          label="CPU status"
+          value={verdict.cpuStatus}
+          tone={verdict.cpuTone}
+        />
+
+        <VerdictCard
+          label="GPU status"
+          value={verdict.gpuStatus}
+          tone={verdict.gpuTone}
+        />
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-violet-950/70 bg-black/20">
+        <div className="border-b border-violet-950/70 p-4">
+          <p className="text-xs font-medium uppercase tracking-[0.25em] text-violet-300">
+            CPU checks
+          </p>
+        </div>
+
+        <div className="grid gap-3 p-4">
+          <HealthCheckRow
+            label="CPU thermal throttling"
+            detected={sensorSummary.cpuThermalThrottlingDetected}
+            severity="bad"
+          />
+
+          <HealthCheckRow
+            label="CPU power limit"
+            detected={sensorSummary.cpuPowerLimitDetected}
+            severity="bad"
+          />
+
+          <HealthCheckRow
+            label="CPU limit reasons"
+            detected={sensorSummary.cpuLimitReasonsDetected}
+            severity="bad"
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-violet-950/70 bg-black/20">
+        <div className="border-b border-violet-950/70 p-4">
+          <p className="text-xs font-medium uppercase tracking-[0.25em] text-violet-300">
+            GPU checks
+          </p>
+        </div>
+
+        <div className="grid gap-3 p-4">
+          <HealthCheckRow
+            label="GPU thermal limit"
+            detected={sensorSummary.gpuThermalLimitDetected}
+            severity="bad"
+          />
+
+          <HealthCheckRow
+            label="GPU power limit"
+            detected={sensorSummary.gpuPowerLimitDetected}
+            severity="warning"
+          />
+
+          <HealthCheckRow
+            label="GPU reliability voltage"
+            detected={sensorSummary.gpuReliabilityVoltageLimitDetected}
+            severity="warning"
+          />
+
+          <HealthCheckRow
+            label="GPU max operating voltage"
+            detected={sensorSummary.gpuMaxOperatingVoltageLimitDetected}
+            severity="warning"
+          />
+
+          <HealthCheckRow
+            label="GPU utilization limit"
+            detected={sensorSummary.gpuUtilizationLimitDetected}
+            severity="info"
+            detectedText="Load-bound"
+          />
+        </div>
+      </div>
+
+      <p className="mt-5 text-sm leading-6 text-zinc-500">
+        Voltage and power limiter flags are common on NVIDIA GPUs, especially
+        with undervolt curves. Thermal limits and CPU throttling are stronger
+        warning signs.
+      </p>
     </section>
   );
+}
+
+function getSensorHealthVerdict(summary: SensorSummary) {
+  const hasCpuProblem =
+    summary.cpuThermalThrottlingDetected ||
+    summary.cpuPowerLimitDetected ||
+    summary.cpuLimitReasonsDetected;
+
+  const hasThermalProblem =
+    summary.cpuThermalThrottlingDetected || summary.gpuThermalLimitDetected;
+
+  const hasGpuBoostLimit =
+    summary.gpuPowerLimitDetected ||
+    summary.gpuReliabilityVoltageLimitDetected ||
+    summary.gpuMaxOperatingVoltageLimitDetected;
+
+  const hasGpuUtilizationLimit = summary.gpuUtilizationLimitDetected;
+
+  return {
+    thermalStatus: hasThermalProblem ? "Thermal issue" : "Clean",
+    thermalTone: hasThermalProblem ? "bad" : "good",
+
+    cpuStatus: hasCpuProblem ? "Limiter detected" : "Clean",
+    cpuTone: hasCpuProblem ? "bad" : "good",
+
+    gpuStatus: getGpuStatus({
+      hasGpuThermalLimit: summary.gpuThermalLimitDetected,
+      hasGpuBoostLimit,
+      hasGpuUtilizationLimit,
+    }),
+    gpuTone: getGpuTone({
+      hasGpuThermalLimit: summary.gpuThermalLimitDetected,
+      hasGpuBoostLimit,
+      hasGpuUtilizationLimit,
+    }),
+  } as const;
+}
+
+function getGpuStatus({
+  hasGpuThermalLimit,
+  hasGpuBoostLimit,
+  hasGpuUtilizationLimit,
+}: {
+  hasGpuThermalLimit: boolean;
+  hasGpuBoostLimit: boolean;
+  hasGpuUtilizationLimit: boolean;
+}) {
+  if (hasGpuThermalLimit) {
+    return "Thermal limit";
+  }
+
+  if (hasGpuBoostLimit) {
+    return "Voltage / power capped";
+  }
+
+  if (hasGpuUtilizationLimit) {
+    return "Load-bound";
+  }
+
+  return "Clean";
+}
+
+function getGpuTone({
+  hasGpuThermalLimit,
+  hasGpuBoostLimit,
+  hasGpuUtilizationLimit,
+}: {
+  hasGpuThermalLimit: boolean;
+  hasGpuBoostLimit: boolean;
+  hasGpuUtilizationLimit: boolean;
+}) {
+  if (hasGpuThermalLimit) {
+    return "bad";
+  }
+
+  if (hasGpuBoostLimit) {
+    return "warning";
+  }
+
+  if (hasGpuUtilizationLimit) {
+    return "info";
+  }
+
+  return "good";
+}
+
+function VerdictCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: HealthTone;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+      <p className="text-xs text-zinc-600">{label}</p>
+
+      <p
+        className={`mt-1 truncate text-lg font-semibold ${getToneClass(tone)}`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function HealthCheckRow({
+  label,
+  detected,
+  severity,
+  detectedText = "Detected",
+  clearText = "Clear",
+}: {
+  label: string;
+  detected: boolean;
+  severity: "bad" | "warning" | "info";
+  detectedText?: string;
+  clearText?: string;
+}) {
+  const tone = detected ? severity : "good";
+
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-4 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+      <p className="text-sm text-zinc-500">{label}</p>
+
+      <p className={`text-right text-sm font-semibold ${getToneClass(tone)}`}>
+        {detected ? detectedText : clearText}
+      </p>
+    </div>
+  );
+}
+
+function getToneClass(tone: HealthTone) {
+  if (tone === "good") {
+    return "text-green-300";
+  }
+
+  if (tone === "warning") {
+    return "text-amber-300";
+  }
+
+  if (tone === "bad") {
+    return "text-rose-300";
+  }
+
+  return "text-violet-200";
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {
@@ -549,7 +860,7 @@ function SensorGroup({
   children,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="border-b border-violet-950/70 p-5 last:border-b-0 lg:border-b-0 lg:border-r lg:last:border-r-0">
@@ -557,8 +868,26 @@ function SensorGroup({
         {title}
       </p>
 
-      <div className="mt-5 grid gap-3">{children}</div>
+      <div className="mt-5 grid gap-4">{children}</div>
     </section>
+  );
+}
+
+function SensorSubGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-violet-950/70 bg-black/20 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">
+        {title}
+      </p>
+
+      <div className="mt-4 grid gap-3">{children}</div>
+    </div>
   );
 }
 
@@ -567,30 +896,6 @@ function SensorMetric({ label, value }: { label: string; value: string }) {
     <div className="flex min-w-0 items-center justify-between gap-4 border-b border-violet-950/60 pb-3 last:border-b-0">
       <p className="text-sm text-zinc-500">{label}</p>
       <p className="truncate text-right text-sm font-semibold text-zinc-100">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function HealthLine({
-  label,
-  value,
-  active,
-}: {
-  label: string;
-  value: string;
-  active: boolean;
-}) {
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-4 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
-      <p className="text-sm text-zinc-500">{label}</p>
-
-      <p
-        className={`text-right text-sm font-medium ${
-          active ? "text-violet-200" : "text-zinc-500"
-        }`}
-      >
         {value}
       </p>
     </div>
