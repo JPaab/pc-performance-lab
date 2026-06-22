@@ -139,88 +139,40 @@ export default async function BuildSnapshotsPage({
 
       <main className="min-h-screen px-6 py-10 text-zinc-100">
         <div className="mx-auto max-w-7xl">
-          <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div>
-              <Link
-                href="/builds"
-                className="text-sm font-medium text-violet-300 transition hover:text-violet-200"
-              >
-                ← Back to builds
-              </Link>
+          <header className="max-w-4xl">
+            <Link
+              href="/builds"
+              className="text-sm font-medium text-violet-300 transition hover:text-violet-200"
+            >
+              ← Back to builds
+            </Link>
 
-              <p className="mt-8 text-sm font-medium uppercase tracking-[0.3em] text-violet-300">
-                Build #{build.id} · tuning states
-              </p>
+            <p className="mt-8 text-sm font-medium uppercase tracking-[0.3em] text-violet-300">
+              Build #{build.id}
+            </p>
 
-              <h1 className="mt-3 max-w-4xl text-5xl font-black tracking-[-0.06em] md:text-7xl">
-                {build.name}
-              </h1>
+            <h1 className="mt-3 text-5xl font-black tracking-[-0.06em] md:text-7xl">
+              Tuning states
+            </h1>
 
-              <p className="mt-4 max-w-2xl text-zinc-400">
-                {build.cpu} · {build.gpu} · {build.ramGb} GB RAM
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <NavButton href="/import">Import run</NavButton>
-              <NavButton href="/sessions">Sessions</NavButton>
-            </div>
+            <p className="mt-4 max-w-2xl text-zinc-400">
+              {build.name} · {build.cpu} · {build.gpu} · {build.ramGb} GB RAM
+            </p>
           </header>
 
-          <section className="mt-8 grid overflow-hidden rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 sm:grid-cols-3">
-            <SummaryItem label="Tuning states" value={snapshots.length} />
-            <SummaryText
-              label="Latest state"
-              value={latestSnapshot?.name ?? "—"}
-            />
-            <SummaryText
-              label="Latest OS profile"
-              value={latestSnapshot?.operatingSystemProfile ?? "—"}
-            />
-          </section>
+          <section className="mt-8 grid gap-6 lg:grid-cols-[390px_1fr] lg:items-start">
+            <div className="grid gap-6">
+              <CreateSnapshotForm buildId={build.id} />
 
-          <section className="mt-8 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-                  Snapshot rule
-                </p>
-
-                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-                  Every benchmark needs a state
-                </h2>
-              </div>
-
-              <p className="max-w-xl text-sm leading-6 text-zinc-500">
-                A snapshot is the exact tuning context that produced a run:
-                clocks, RAM, BIOS, OS, driver, power plan and tweak tags.
-              </p>
-            </div>
-
-            <div className="mt-6 grid gap-4 lg:grid-cols-3">
-              <ConceptCard
-                number="01"
-                title="Document state"
-                text="Save CPU, RAM, BIOS, OS, driver and tweak notes."
-              />
-              <ConceptCard
-                number="02"
-                title="Run benchmark"
-                text="Import CapFrameX against this exact snapshot."
-              />
-              <ConceptCard
-                number="03"
-                title="Compare honestly"
-                text="Use sessions to decide whether the tweak stays."
+              <SnapshotWorkflow
+                build={build}
+                latestSnapshot={latestSnapshot}
+                snapshotCount={snapshots.length}
               />
             </div>
-          </section>
-
-          <div className="mt-8 grid gap-6 lg:grid-cols-[390px_1fr] lg:items-start">
-            <CreateSnapshotForm buildId={build.id} />
 
             <section id="hardware-snapshots">
-              <div className="mb-5 flex flex-col gap-3 rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 p-5 md:flex-row md:items-end md:justify-between">
+              <div className="mb-5 flex flex-col gap-2 rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 p-5 md:flex-row md:items-end md:justify-between">
                 <div>
                   <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
                     Registered states
@@ -231,26 +183,194 @@ export default async function BuildSnapshotsPage({
                   </h2>
                 </div>
 
-                <p className="max-w-xl text-sm leading-6 text-zinc-500">
-                  Create a new snapshot whenever BIOS, RAM, OS, driver, power
-                  plan or tweak stack changes.
+                <p className="text-sm text-zinc-600">
+                  {snapshots.length}{" "}
+                  {snapshots.length === 1 ? "snapshot" : "snapshots"}
                 </p>
               </div>
 
               {snapshots.length === 0 ? (
                 <EmptyState />
               ) : (
-                <div className="grid gap-5">
+                <div className="grid gap-4">
                   {snapshots.map((snapshot) => (
                     <SnapshotCard key={snapshot.id} snapshot={snapshot} />
                   ))}
                 </div>
               )}
             </section>
-          </div>
+          </section>
         </div>
       </main>
     </>
+  );
+}
+
+function SnapshotWorkflow({
+  build,
+  latestSnapshot,
+  snapshotCount,
+}: {
+  build: PcBuild;
+  latestSnapshot: HardwareSnapshot | null;
+  snapshotCount: number;
+}) {
+  const hasSnapshot = Boolean(latestSnapshot);
+
+  return (
+    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-5 shadow-2xl shadow-black/25">
+      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
+        Workflow
+      </p>
+
+      <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+        State before run
+      </h2>
+
+      <p className="mt-2 text-sm leading-6 text-zinc-500">
+        Save the tuning state first. Then imports and comparisons make sense.
+      </p>
+
+      <div className="mt-5 grid gap-3">
+        <WorkflowStep
+          number="01"
+          title="Hardware ready"
+          text={build.name}
+          status="Done"
+          done
+          locked={false}
+          href="/builds"
+        />
+
+        <WorkflowStep
+          number="02"
+          title="Create tuning state"
+          text={
+            latestSnapshot
+              ? latestSnapshot.name
+              : "BIOS, OS, driver, RAM and tweak state"
+          }
+          status={hasSnapshot ? "Done" : "Start"}
+          done={hasSnapshot}
+          locked={false}
+          href={`/builds/${build.id}/snapshots`}
+        />
+
+        <WorkflowStep
+          number="03"
+          title="Import benchmark"
+          text={
+            hasSnapshot
+              ? "CapFrameX run + HWiNFO sensors"
+              : "Create a tuning state first"
+          }
+          status={hasSnapshot ? "Next" : "Locked"}
+          done={false}
+          locked={!hasSnapshot}
+          href={
+            latestSnapshot
+              ? `/import?snapshotId=${latestSnapshot.id}`
+              : `/builds/${build.id}/snapshots`
+          }
+        />
+
+        <WorkflowStep
+          number="04"
+          title="Compare decision"
+          text={
+            hasSnapshot
+              ? "After importing runs, decide what stays"
+              : "Benchmark import unlocks this step"
+          }
+          status={hasSnapshot ? "After run" : "Locked"}
+          done={false}
+          locked={!hasSnapshot}
+          href="/compare"
+        />
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-violet-950/70 bg-black/20 p-4">
+        <p className="text-xs uppercase tracking-[0.22em] text-zinc-700">
+          Current tuning states
+        </p>
+        <p className="mt-1 text-3xl font-black tracking-[-0.05em] text-zinc-50">
+          {snapshotCount}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function WorkflowStep({
+  number,
+  title,
+  text,
+  status,
+  done,
+  locked,
+  href,
+}: {
+  number: string;
+  title: string;
+  text: string;
+  status: string;
+  done: boolean;
+  locked: boolean;
+  href: string;
+}) {
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <p
+          className={`font-mono text-sm ${
+            locked ? "text-zinc-700" : "text-violet-300"
+          }`}
+        >
+          {number}
+        </p>
+
+        <span
+          className={`rounded-full border px-3 py-1 text-xs font-medium ${
+            locked
+              ? "border-zinc-800 bg-black/20 text-zinc-700"
+              : done
+                ? "border-green-500/30 bg-green-500/10 text-green-300"
+                : "border-violet-950/80 bg-black/30 text-zinc-500"
+          }`}
+        >
+          {status}
+        </span>
+      </div>
+
+      <p
+        className={`mt-3 font-semibold ${
+          locked ? "text-zinc-700" : "text-zinc-100"
+        }`}
+      >
+        {title}
+      </p>
+
+      <p className="mt-1 line-clamp-2 text-sm leading-6 text-zinc-500">
+        {text}
+      </p>
+    </>
+  );
+
+  if (locked) {
+    return (
+      <article className="cursor-not-allowed rounded-2xl border border-violet-950/40 bg-black/15 p-4 opacity-70">
+        {content}
+      </article>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="rounded-2xl border border-violet-950/70 bg-black/25 p-4 transition hover:border-violet-400/70"
+    >
+      {content}
+    </Link>
   );
 }
 
@@ -258,14 +378,14 @@ function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
   const tags = snapshot.tweakTags ?? [];
 
   return (
-    <article className="group min-w-0 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25 transition hover:border-violet-700/80">
-      <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+    <article className="group rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-5 shadow-2xl shadow-black/20 transition hover:border-violet-700/80">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-600">
-            Snapshot #{snapshot.id} · tuning state
+            Snapshot #{snapshot.id}
           </p>
 
-          <h3 className="mt-2 truncate text-3xl font-semibold tracking-[-0.04em] text-zinc-50">
+          <h3 className="mt-2 truncate text-2xl font-semibold tracking-[-0.04em] text-zinc-50">
             {snapshot.name}
           </h3>
 
@@ -275,47 +395,46 @@ function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
         </div>
 
         <Link
-          href="/import"
+          href={`/import?snapshotId=${snapshot.id}`}
           className="shrink-0 rounded-full border border-violet-900/80 bg-violet-950/20 px-4 py-2 text-sm font-medium text-zinc-300 transition group-hover:border-violet-300 group-hover:text-violet-200"
         >
           Import run
         </Link>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <MainSpec label="CPU state" value={snapshot.cpuOverclock} />
-        <MainSpec label="RAM state" value={snapshot.ramProfile} />
-        <MainSpec label="OS profile" value={snapshot.operatingSystemProfile} />
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <MainSpec label="CPU" value={snapshot.cpuOverclock} />
+        <MainSpec label="RAM" value={snapshot.ramProfile} />
+        <MainSpec label="OS" value={snapshot.operatingSystemProfile} />
       </div>
 
-      <div className="mt-5 rounded-2xl border border-violet-950/70 bg-black/20 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
-          Import-critical context
-        </p>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <InlineSpec label="Power plan" value={snapshot.powerPlan} />
-          <InlineSpec
-            label="HAGS"
-            value={
-              snapshot.hagsEnabled === null
-                ? "—"
-                : snapshot.hagsEnabled
-                  ? "Enabled"
-                  : "Disabled"
-            }
-          />
-          <InlineSpec label="GPU driver" value={snapshot.gpuDriver} />
-          <InlineSpec label="BIOS" value={snapshot.biosVersion} />
-        </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Chip label="Power" value={snapshot.powerPlan} />
+        <Chip
+          label="HAGS"
+          value={
+            snapshot.hagsEnabled === null
+              ? null
+              : snapshot.hagsEnabled
+                ? "Enabled"
+                : "Disabled"
+          }
+        />
+        <Chip label="Driver" value={snapshot.gpuDriver} />
+        <Chip label="BIOS" value={snapshot.biosVersion} />
+        <Chip label="Timings" value={snapshot.ramTimings} />
+        <Chip label="tRFC" value={snapshot.trfc} />
+        <Chip label="tREFI" value={snapshot.trefi} />
+        <Chip label="CR" value={snapshot.commandRate} />
+        <Chip label="Gear" value={snapshot.gearMode} />
       </div>
 
       {tags.length > 0 && (
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           {tags.slice(0, 8).map((tag) => (
             <span
               key={tag}
-              className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-400"
+              className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-violet-200/80"
             >
               {tag}
             </span>
@@ -329,25 +448,17 @@ function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
         </div>
       )}
 
-      <details className="mt-5 rounded-2xl border border-violet-950/70 bg-black/20">
-        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-zinc-400 transition hover:text-violet-200">
-          Advanced state details
-        </summary>
+      {snapshot.notes && (
+        <details className="mt-4 rounded-2xl border border-violet-950/70 bg-black/20">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-zinc-400 transition hover:text-violet-200">
+            Notes
+          </summary>
 
-        <div className="grid gap-3 border-t border-violet-950/70 p-4 sm:grid-cols-2 xl:grid-cols-3">
-          <Spec label="RAM timings" value={snapshot.ramTimings} />
-          <Spec label="tRFC" value={snapshot.trfc} />
-          <Spec label="tREFI" value={snapshot.trefi} />
-          <Spec label="Command rate" value={snapshot.commandRate} />
-          <Spec label="Gear mode" value={snapshot.gearMode} />
-        </div>
-
-        {snapshot.notes && (
           <p className="border-t border-violet-950/70 px-4 py-4 text-sm leading-6 text-zinc-500">
             {snapshot.notes}
           </p>
-        )}
-      </details>
+        </details>
+      )}
     </article>
   );
 }
@@ -360,94 +471,33 @@ function MainSpec({
   value: string | number | null;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-violet-900/60 bg-violet-950/20 p-4">
+    <div className="min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
       <p className="text-xs uppercase tracking-[0.2em] text-zinc-600">
         {label}
       </p>
-      <p className="mt-2 truncate text-base font-semibold text-zinc-100">
+      <p className="mt-2 truncate text-sm font-semibold text-zinc-100">
         {value ?? "—"}
       </p>
     </div>
   );
 }
 
-function InlineSpec({
+function Chip({
   label,
   value,
 }: {
   label: string;
   value: string | number | null;
 }) {
+  if (!value) {
+    return null;
+  }
+
   return (
-    <div className="min-w-0 border-l border-violet-950/70 pl-3">
-      <p className="text-xs text-zinc-600">{label}</p>
-      <p className="mt-1 truncate text-sm font-medium text-zinc-300">
-        {value ?? "—"}
-      </p>
-    </div>
-  );
-}
-
-function Spec({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number | null;
-}) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-violet-950/60 bg-black/25 p-4">
-      <p className="text-xs text-zinc-600">{label}</p>
-      <p className="mt-1 truncate text-sm font-medium text-zinc-100">
-        {value ?? "—"}
-      </p>
-    </div>
-  );
-}
-
-function ConceptCard({
-  number,
-  title,
-  text,
-}: {
-  number: string;
-  title: string;
-  text: string;
-}) {
-  return (
-    <article className="rounded-2xl border border-violet-950/70 bg-black/25 p-4">
-      <p className="font-mono text-sm text-violet-300">{number}</p>
-      <p className="mt-3 font-semibold text-zinc-100">{title}</p>
-      <p className="mt-1 text-sm leading-6 text-zinc-500">{text}</p>
-    </article>
-  );
-}
-
-function SummaryItem({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="border-b border-violet-950/70 p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-      <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
-        {label}
-      </p>
-
-      <p className="mt-2 text-4xl font-black tracking-[-0.05em] text-zinc-50">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function SummaryText({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 border-b border-violet-950/70 p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
-      <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
-        {label}
-      </p>
-
-      <p className="mt-2 truncate text-lg font-semibold text-zinc-50">
-        {value}
-      </p>
-    </div>
+    <span className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-500">
+      <span className="text-zinc-700">{label}: </span>
+      <span className="text-zinc-400">{value}</span>
+    </span>
   );
 }
 
@@ -459,20 +509,9 @@ function EmptyState() {
       </h2>
 
       <p className="mt-3 max-w-xl text-zinc-500">
-        Create the first snapshot on the left. After that, import CapFrameX and
-        HWiNFO data against this exact state.
+        Create the first snapshot. After that, importing a benchmark becomes the
+        next step.
       </p>
     </section>
-  );
-}
-
-function NavButton({ href, children }: { href: string; children: string }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-full border border-violet-900/80 bg-violet-950/20 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
-    >
-      {children}
-    </Link>
   );
 }

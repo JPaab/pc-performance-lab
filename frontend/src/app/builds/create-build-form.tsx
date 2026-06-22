@@ -74,7 +74,7 @@ export function CreateBuildForm() {
       setIsSubmitting(true);
       setStatus({
         tone: "idle",
-        message: "Creating fixed hardware profile...",
+        message: "Creating hardware profile...",
       });
 
       const createdBuild = await postJson<PcBuild, CreateBuildRequest>(
@@ -84,8 +84,9 @@ export function CreateBuildForm() {
 
       setStatus({
         tone: "success",
-        message: `Build #${createdBuild.id} created. Add a tweak snapshot next.`,
+        message: `Build #${createdBuild.id} created. Tuning state unlocked.`,
       });
+
       setForm(initialForm);
       router.refresh();
     } catch (error) {
@@ -102,14 +103,15 @@ export function CreateBuildForm() {
   return (
     <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/85 p-5 shadow-2xl shadow-black/30">
       <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-        New build
+        New hardware
       </p>
 
-      <h2 className="mt-2 text-2xl font-semibold">Fixed hardware</h2>
+      <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+        Register build
+      </h2>
 
       <p className="mt-2 text-sm leading-6 text-zinc-500">
-        Only register the physical machine here. Use snapshots for BIOS, OS,
-        drivers, power plans and tuning changes.
+        Fixed physical machine only. Tweaks go in snapshots.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
@@ -145,16 +147,12 @@ export function CreateBuildForm() {
 
         <details className="group rounded-2xl border border-violet-950/70 bg-black/25 p-4">
           <summary className="cursor-pointer list-none text-sm font-medium text-zinc-300 transition hover:text-violet-200">
-            Optional platform context
+            Optional context
             <span className="ml-2 text-zinc-600 group-open:hidden">+</span>
             <span className="ml-2 hidden text-zinc-600 group-open:inline">
               −
             </span>
           </summary>
-
-          <p className="mt-2 text-sm leading-6 text-zinc-600">
-            Useful for portfolio and audits. Do not put tweak state here.
-          </p>
 
           <div className="mt-4 grid gap-4">
             <TextInput
@@ -199,7 +197,7 @@ export function CreateBuildForm() {
           disabled={isSubmitting}
           className="rounded-2xl bg-violet-300 px-6 py-3 font-semibold text-black transition hover:bg-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? "Creating..." : "Create fixed build"}
+          {isSubmitting ? "Creating..." : "Create hardware profile"}
         </button>
 
         <StatusMessage status={status} />
@@ -208,7 +206,7 @@ export function CreateBuildForm() {
           href="#registered-machines"
           className="text-center text-sm font-medium text-violet-300 transition hover:text-violet-200 lg:hidden"
         >
-          View registered machines ↓
+          View builds ↓
         </a>
       </form>
     </section>

@@ -65,7 +65,7 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
 
   function updateField(
     field: keyof CreateHardwareSnapshotRequest,
-    value: string | number | boolean | null | string[],
+    value: string | number | boolean | null,
   ) {
     setForm((currentForm) => ({
       ...currentForm,
@@ -110,8 +110,9 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
 
       setStatus({
         tone: "success",
-        message: `Snapshot #${createdSnapshot.id} created. Import a benchmark against this state next.`,
+        message: `Snapshot #${createdSnapshot.id} created. Benchmark import unlocked.`,
       });
+
       setForm(initialForm);
       setTagsInput("");
       router.refresh();
@@ -129,14 +130,15 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
   return (
     <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/85 p-5 shadow-2xl shadow-black/30">
       <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-        New snapshot
+        New state
       </p>
 
-      <h2 className="mt-2 text-2xl font-semibold">Tuning state</h2>
+      <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
+        Register snapshot
+      </h2>
 
       <p className="mt-2 text-sm leading-6 text-zinc-500">
-        Save the exact BIOS, Windows, driver, RAM and tweak state before
-        importing a run.
+        Save the exact tuning state before importing a run.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
@@ -148,74 +150,66 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
           required
         />
 
-        <section className="rounded-2xl border border-violet-950/70 bg-black/25 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
-            Performance-critical state
-          </p>
+        <TextInput
+          label="CPU state"
+          value={form.cpuOverclock}
+          onChange={(value) => updateField("cpuOverclock", value)}
+          placeholder="P48 / E38 / Ring42"
+        />
 
-          <div className="mt-4 grid gap-4">
-            <TextInput
-              label="CPU overclock"
-              value={form.cpuOverclock}
-              onChange={(value) => updateField("cpuOverclock", value)}
-              placeholder="P48 / E38 / Ring42"
+        <TextInput
+          label="RAM profile"
+          value={form.ramProfile}
+          onChange={(value) => updateField("ramProfile", value)}
+          placeholder="DDR4 3600 Gear1 1N"
+        />
+
+        <TextInput
+          label="OS profile"
+          value={form.operatingSystemProfile}
+          onChange={(value) => updateField("operatingSystemProfile", value)}
+          placeholder="Windows 11 AtlasOS 25H2"
+        />
+
+        <TextInput
+          label="Power plan"
+          value={form.powerPlan}
+          onChange={(value) => updateField("powerPlan", value)}
+          placeholder="Atlas Performance"
+        />
+
+        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+          <TextInput
+            label="GPU driver"
+            value={form.gpuDriver}
+            onChange={(value) => updateField("gpuDriver", value)}
+            placeholder="596.36"
+          />
+
+          <label className="flex min-w-0 items-center gap-3 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3">
+            <input
+              type="checkbox"
+              checked={form.hagsEnabled}
+              onChange={(event) =>
+                updateField("hagsEnabled", event.target.checked)
+              }
+              className="h-4 w-4 shrink-0 accent-violet-300"
             />
 
-            <TextInput
-              label="RAM profile"
-              value={form.ramProfile}
-              onChange={(value) => updateField("ramProfile", value)}
-              placeholder="DDR4 3600 Gear1 1N"
-            />
-
-            <TextInput
-              label="OS profile"
-              value={form.operatingSystemProfile}
-              onChange={(value) => updateField("operatingSystemProfile", value)}
-              placeholder="Windows 11 AtlasOS 25H2"
-            />
-
-            <TextInput
-              label="Power plan"
-              value={form.powerPlan}
-              onChange={(value) => updateField("powerPlan", value)}
-              placeholder="Atlas Performance"
-            />
-
-            <TextInput
-              label="GPU driver"
-              value={form.gpuDriver}
-              onChange={(value) => updateField("gpuDriver", value)}
-              placeholder="596.36"
-            />
-
-            <label className="flex min-w-0 items-center gap-3 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3">
-              <input
-                type="checkbox"
-                checked={form.hagsEnabled}
-                onChange={(event) =>
-                  updateField("hagsEnabled", event.target.checked)
-                }
-                className="h-4 w-4 shrink-0 accent-violet-300"
-              />
-
-              <span className="text-sm text-zinc-300">HAGS enabled</span>
-            </label>
-          </div>
-        </section>
+            <span className="whitespace-nowrap text-sm text-zinc-300">
+              HAGS enabled
+            </span>
+          </label>
+        </div>
 
         <details className="group rounded-2xl border border-violet-950/70 bg-black/25 p-4">
           <summary className="cursor-pointer list-none text-sm font-medium text-zinc-300 transition hover:text-violet-200">
-            Advanced memory / BIOS context
+            Advanced tuning details
             <span className="ml-2 text-zinc-600 group-open:hidden">+</span>
             <span className="ml-2 hidden text-zinc-600 group-open:inline">
               −
             </span>
           </summary>
-
-          <p className="mt-2 text-sm leading-6 text-zinc-600">
-            Useful for A/B testing RAM, ring, BIOS and stability checkpoints.
-          </p>
 
           <div className="mt-4 grid gap-4">
             <TextInput
@@ -225,31 +219,35 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
               placeholder="16-19-19-38"
             />
 
-            <NumberInput
-              label="tRFC"
-              value={form.trfc}
-              onChange={(value) => updateField("trfc", value)}
-            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <NumberInput
+                label="tRFC"
+                value={form.trfc}
+                onChange={(value) => updateField("trfc", value)}
+              />
 
-            <NumberInput
-              label="tREFI"
-              value={form.trefi}
-              onChange={(value) => updateField("trefi", value)}
-            />
+              <NumberInput
+                label="tREFI"
+                value={form.trefi}
+                onChange={(value) => updateField("trefi", value)}
+              />
+            </div>
 
-            <TextInput
-              label="Command rate"
-              value={form.commandRate}
-              onChange={(value) => updateField("commandRate", value)}
-              placeholder="1N"
-            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextInput
+                label="Command rate"
+                value={form.commandRate}
+                onChange={(value) => updateField("commandRate", value)}
+                placeholder="1N"
+              />
 
-            <TextInput
-              label="Gear mode"
-              value={form.gearMode}
-              onChange={(value) => updateField("gearMode", value)}
-              placeholder="Gear 1"
-            />
+              <TextInput
+                label="Gear mode"
+                value={form.gearMode}
+                onChange={(value) => updateField("gearMode", value)}
+                placeholder="Gear 1"
+              />
+            </div>
 
             <TextInput
               label="BIOS version"
@@ -257,27 +255,27 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
               onChange={(value) => updateField("biosVersion", value)}
               placeholder="E7D32IMS.1M0"
             />
+
+            <TextInput
+              label="Tweak tags"
+              value={tagsInput}
+              onChange={setTagsInput}
+              placeholder="ATLASOS, 5B_LITE, DEFENDER_ENABLED"
+            />
+
+            <label className="grid min-w-0 gap-2">
+              <span className="text-sm text-zinc-500">Notes</span>
+
+              <textarea
+                value={form.notes}
+                onChange={(event) => updateField("notes", event.target.value)}
+                placeholder="Stable checkpoint, rollback notes, benchmark context..."
+                rows={4}
+                className="w-full min-w-0 resize-none rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-violet-300"
+              />
+            </label>
           </div>
         </details>
-
-        <TextInput
-          label="Tweak tags"
-          value={tagsInput}
-          onChange={setTagsInput}
-          placeholder="ATLASOS, 5B_LITE, DEFENDER_ENABLED"
-        />
-
-        <label className="grid min-w-0 gap-2">
-          <span className="text-sm text-zinc-500">Notes</span>
-
-          <textarea
-            value={form.notes}
-            onChange={(event) => updateField("notes", event.target.value)}
-            placeholder="Stable checkpoint with timer/kernel/lazywrite tweaks..."
-            rows={4}
-            className="w-full min-w-0 resize-none rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-violet-300"
-          />
-        </label>
 
         <button
           type="submit"
