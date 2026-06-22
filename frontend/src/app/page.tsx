@@ -1,4 +1,5 @@
 import { buildApiUrl } from "@/lib/api";
+import Link from "next/link";
 
 type BuildSummary = {
   id: number;
@@ -164,6 +165,14 @@ export default async function Home() {
             Track PC builds, hardware snapshots, benchmark sessions and sensor
             summaries to understand if a change actually improves performance.
           </p>
+          <div className="mt-6">
+  <Link
+    href="/sessions"
+    className="inline-flex rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
+  >
+    View performance sessions
+  </Link>
+</div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
