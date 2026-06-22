@@ -22,6 +22,26 @@ type PerformanceSession = {
   createdAt: string;
 };
 
+type Tone = "good" | "warning" | "bad" | "info";
+
+type SessionFeel = {
+  pacing: {
+    label: string;
+    detail: string;
+    tone: Tone;
+  };
+  lows: {
+    label: string;
+    detail: string;
+    tone: Tone;
+  };
+  drops: {
+    label: string;
+    detail: string;
+    tone: Tone;
+  };
+};
+
 async function getSessions(): Promise<PerformanceSession[]> {
   try {
     const response = await fetch(buildApiUrl("/api/sessions"), {
@@ -48,6 +68,14 @@ function formatNumber(value: number | null | undefined, suffix = "") {
   return `${value.toFixed(2)}${suffix}`;
 }
 
+function formatFps(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+
+  return `${Math.round(value)} fps`;
+}
+
 function formatDuration(seconds: number | null | undefined) {
   if (!seconds) {
     return "—";
@@ -60,8 +88,79 @@ function formatDuration(seconds: number | null | undefined) {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
+function getToneClass(tone: Tone) {
+  if (tone === "good") {
+    return "text-green-300";
+  }
+
+  if (tone === "warning") {
+    return "text-amber-300";
+  }
+
+  if (tone === "bad") {
+    return "text-rose-300";
+  }
+
+  return "text-violet-200";
+}
+
+function getToneBorderClass(tone: Tone) {
+  if (tone === "good") {
+    return "border-green-500/40 bg-green-500/10";
+  }
+
+  if (tone === "warning") {
+    return "border-amber-500/40 bg-amber-500/10";
+  }
+
+  if (tone === "bad") {
+    return "border-rose-500/40 bg-rose-500/10";
+  }
+
+  return "border-violet-500/40 bg-violet-500/10";
+}
+
+function getBestBy(
+  sessions: PerformanceSession[],
+  getValue: (session: PerformanceSession) => number | null,
+) {
+  return sessions.reduce<PerformanceSession | null>((best, session) => {
+    const value = getValue(session);
+
+    if (value === null) {
+      return best;
+    }
+
+    if (!best) {
+      return session;
+    }
+
+    const bestValue = getValue(best);
+
+    if (bestValue === null || value > bestValue) {
+      return session;
+    }
+
+    return best;
+  }, null);
+}
+
+function getCleanRunCount(sessions: PerformanceSession[]) {
+  return sessions.filter((session) => {
+    const hasDrops = (session.droppedFrames ?? 0) > 0;
+    const hasBadP99 =
+      session.p99FrameTimeMs !== null && session.p99FrameTimeMs > 16.7;
+
+    return !hasDrops && !hasBadP99;
+  }).length;
+}
+
 export default async function SessionsPage() {
   const sessions = await getSessions();
+
+  const bestAverage = getBestBy(sessions, (session) => session.averageFps);
+  const bestLow = getBestBy(sessions, (session) => session.onePercentLowFps);
+  const cleanRuns = getCleanRunCount(sessions);
 
   return (
     <>
@@ -80,8 +179,9 @@ export default async function SessionsPage() {
               </h1>
 
               <p className="mt-4 max-w-2xl text-zinc-400">
-                Imported and manually registered game sessions. Scan FPS, lows,
-                frametime and stability without opening every detail page.
+                Scan your captures by feel: average FPS, lows, frame pacing and
+                drop risk. Open the detail page only when a run deserves deeper
+                analysis.
               </p>
             </div>
 
@@ -91,23 +191,17 @@ export default async function SessionsPage() {
             </div>
           </header>
 
-          <section className="mt-8 grid overflow-hidden rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 sm:grid-cols-3">
-            <SummaryItem label="Total sessions" value={sessions.length} />
+          <section className="mt-8 grid overflow-hidden rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 sm:grid-cols-4">
+            <SummaryItem label="Total runs" value={sessions.length} />
             <SummaryItem
-              label="CapFrameX imports"
-              value={
-                sessions.filter(
-                  (session) => session.sourceType === "CAPFRAMEX_JSON",
-                ).length
-              }
+              label="Best average"
+              value={formatFps(bestAverage?.averageFps)}
             />
             <SummaryItem
-              label="Manual entries"
-              value={
-                sessions.filter((session) => session.sourceType === "MANUAL")
-                  .length
-              }
+              label="Best 1% low"
+              value={formatFps(bestLow?.onePercentLowFps)}
             />
+            <SummaryItem label="Clean runs" value={cleanRuns} />
           </section>
 
           {sessions.length === 0 ? (
@@ -126,6 +220,8 @@ export default async function SessionsPage() {
 }
 
 function SessionCard({ session }: { session: PerformanceSession }) {
+  const feel = getSessionFeel(session);
+
   return (
     <article className="group min-w-0 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25 transition hover:border-violet-700/80">
       <div className="flex min-w-0 items-start justify-between gap-5">
@@ -148,7 +244,7 @@ function SessionCard({ session }: { session: PerformanceSession }) {
         </span>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+      <div className="mt-6 grid gap-5 md:grid-cols-[1fr_auto] md:items-end">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
             average fps
@@ -157,44 +253,77 @@ function SessionCard({ session }: { session: PerformanceSession }) {
           <p className="mt-1 text-6xl font-black tracking-[-0.06em] text-violet-300">
             {formatNumber(session.averageFps)}
           </p>
+
+          <p className="mt-2 text-sm text-zinc-500">
+            1% low:{" "}
+            <span className="font-medium text-zinc-300">
+              {formatFps(session.onePercentLowFps)}
+            </span>{" "}
+            · P99:{" "}
+            <span className="font-medium text-zinc-300">
+              {formatNumber(session.p99FrameTimeMs, " ms")}
+            </span>
+          </p>
         </div>
 
-        <Link
-          href={`/sessions/${session.id}`}
-          className="inline-flex justify-center rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition group-hover:border-violet-300 group-hover:text-violet-200"
-        >
-          Details
-        </Link>
+        <div className="flex flex-wrap gap-2 md:justify-end">
+          <Link
+            href={`/sessions/${session.id}`}
+            className="inline-flex justify-center rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition group-hover:border-violet-300 group-hover:text-violet-200"
+          >
+            Open
+          </Link>
+
+          <Link
+            href={`/compare?s2=${session.id}`}
+            className="inline-flex justify-center rounded-full border border-violet-900/80 bg-violet-950/20 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
+          >
+            Use as candidate
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric
-          label="1% low"
-          value={formatNumber(session.onePercentLowFps, " fps")}
+      <div className="mt-6 grid gap-3 md:grid-cols-3">
+        <FeelCard
+          label="Frame pacing"
+          value={feel.pacing.label}
+          detail={feel.pacing.detail}
+          tone={feel.pacing.tone}
         />
-        <Metric
-          label="0.1% low"
-          value={formatNumber(session.zeroPointOnePercentLowFps, " fps")}
+
+        <FeelCard
+          label="Low FPS stability"
+          value={feel.lows.label}
+          detail={feel.lows.detail}
+          tone={feel.lows.tone}
         />
-        <Metric
-          label="P99"
-          value={formatNumber(session.p99FrameTimeMs, " ms")}
+
+        <FeelCard
+          label="Drop risk"
+          value={feel.drops.label}
+          detail={feel.drops.detail}
+          tone={feel.drops.tone}
         />
-        <Metric label="Stutters" value={session.stutterCount ?? "—"} />
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <SmallInfo label="Snapshot" value={`#${session.snapshotId}`} />
         <SmallInfo
           label="Duration"
           value={formatDuration(session.durationSeconds)}
         />
-        <SmallInfo label="Dropped" value={session.droppedFrames ?? "—"} />
+        <SmallInfo
+          label="0.1% low"
+          value={formatFps(session.zeroPointOnePercentLowFps)}
+        />
+        <SmallInfo
+          label="Captured"
+          value={formatDateLabel(session.createdAt)}
+        />
       </div>
 
       {session.tags.length > 0 && (
         <div className="mt-5 flex flex-wrap gap-2">
-          {session.tags.slice(0, 6).map((tag) => (
+          {session.tags.slice(0, 5).map((tag) => (
             <span
               key={tag}
               className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-400"
@@ -203,9 +332,9 @@ function SessionCard({ session }: { session: PerformanceSession }) {
             </span>
           ))}
 
-          {session.tags.length > 6 && (
+          {session.tags.length > 5 && (
             <span className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-600">
-              +{session.tags.length - 6}
+              +{session.tags.length - 5}
             </span>
           )}
         </div>
@@ -226,13 +355,154 @@ function SessionCard({ session }: { session: PerformanceSession }) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string | number }) {
+function getSessionFeel(session: PerformanceSession): SessionFeel {
+  return {
+    pacing: getFramePacingStatus(session.p99FrameTimeMs),
+    lows: getLowStabilityStatus(session.averageFps, session.onePercentLowFps),
+    drops: getDropStatus(session.droppedFrames, session.p999FrameTimeMs),
+  };
+}
+
+function getFramePacingStatus(
+  p99FrameTimeMs: number | null,
+): SessionFeel["pacing"] {
+  if (p99FrameTimeMs === null) {
+    return {
+      label: "No data",
+      detail: "Missing P99 data",
+      tone: "info",
+    };
+  }
+
+  if (p99FrameTimeMs <= 6) {
+    return {
+      label: "Very smooth",
+      detail: `${formatNumber(p99FrameTimeMs, " ms")} P99`,
+      tone: "good",
+    };
+  }
+
+  if (p99FrameTimeMs <= 10) {
+    return {
+      label: "Smooth",
+      detail: `${formatNumber(p99FrameTimeMs, " ms")} P99`,
+      tone: "good",
+    };
+  }
+
+  if (p99FrameTimeMs <= 16.7) {
+    return {
+      label: "Watch spikes",
+      detail: `${formatNumber(p99FrameTimeMs, " ms")} P99`,
+      tone: "warning",
+    };
+  }
+
+  return {
+    label: "Rough",
+    detail: `${formatNumber(p99FrameTimeMs, " ms")} P99`,
+    tone: "bad",
+  };
+}
+
+function getLowStabilityStatus(
+  averageFps: number | null,
+  onePercentLowFps: number | null,
+): SessionFeel["lows"] {
+  if (!averageFps || !onePercentLowFps) {
+    return {
+      label: "No data",
+      detail: "Missing lows",
+      tone: "info",
+    };
+  }
+
+  const ratio = onePercentLowFps / averageFps;
+  const percent = Math.round(ratio * 100);
+
+  if (ratio >= 0.72) {
+    return {
+      label: "Strong",
+      detail: `${percent}% of average`,
+      tone: "good",
+    };
+  }
+
+  if (ratio >= 0.58) {
+    return {
+      label: "Decent",
+      detail: `${percent}% of average`,
+      tone: "warning",
+    };
+  }
+
+  return {
+    label: "Weak",
+    detail: `${percent}% of average`,
+    tone: "bad",
+  };
+}
+
+function getDropStatus(
+  droppedFrames: number | null,
+  p999FrameTimeMs: number | null,
+): SessionFeel["drops"] {
+  if ((droppedFrames ?? 0) > 0) {
+    return {
+      label: "Drops",
+      detail: `${droppedFrames} dropped`,
+      tone: "bad",
+    };
+  }
+
+  if (p999FrameTimeMs !== null && p999FrameTimeMs > 20) {
+    return {
+      label: "Spike risk",
+      detail: `${formatNumber(p999FrameTimeMs, " ms")} P99.9`,
+      tone: "warning",
+    };
+  }
+
+  return {
+    label: "Clean",
+    detail: "No dropped frames",
+    tone: "good",
+  };
+}
+
+function formatDateLabel(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+function FeelCard({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: Tone;
+}) {
   return (
-    <div className="min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+    <div className={`rounded-2xl border p-4 ${getToneBorderClass(tone)}`}>
       <p className="text-xs text-zinc-600">{label}</p>
-      <p className="mt-1 truncate text-lg font-semibold text-zinc-100">
+
+      <p className={`mt-1 text-lg font-semibold ${getToneClass(tone)}`}>
         {value}
       </p>
+
+      <p className="mt-1 text-xs text-zinc-500">{detail}</p>
     </div>
   );
 }
@@ -252,7 +522,13 @@ function SmallInfo({
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: number }) {
+function SummaryItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
   return (
     <div className="border-b border-violet-950/70 p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
       <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
@@ -272,8 +548,8 @@ function EmptyState() {
       <h2 className="text-2xl font-semibold text-zinc-50">No sessions found</h2>
 
       <p className="mt-3 max-w-xl text-zinc-500">
-        Import a CapFrameX JSON from the import page, or create a manual session
-        from the backend while the UI is still evolving.
+        Import a CapFrameX JSON from the import page, then attach HWiNFO sensor
+        data from the session detail or import flow.
       </p>
 
       <div className="mt-6">
