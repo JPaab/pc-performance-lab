@@ -22,6 +22,11 @@ type PcBuild = CreateBuildRequest & {
   createdAt: string;
 };
 
+type FormStatus = {
+  tone: "idle" | "success" | "error";
+  message: string;
+};
+
 const initialForm: CreateBuildRequest = {
   name: "",
   cpu: "",
@@ -38,7 +43,10 @@ export function CreateBuildForm() {
   const router = useRouter();
 
   const [form, setForm] = useState<CreateBuildRequest>(initialForm);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState<FormStatus>({
+    tone: "idle",
+    message: "",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function updateField(
@@ -55,26 +63,37 @@ export function CreateBuildForm() {
     event.preventDefault();
 
     if (!form.name || !form.cpu || !form.gpu) {
-      setStatus("Build name, CPU and GPU are required.");
+      setStatus({
+        tone: "error",
+        message: "Build name, CPU and GPU are required.",
+      });
       return;
     }
 
     try {
       setIsSubmitting(true);
-      setStatus("Creating build...");
+      setStatus({
+        tone: "idle",
+        message: "Creating fixed hardware profile...",
+      });
 
       const createdBuild = await postJson<PcBuild, CreateBuildRequest>(
         "/api/builds",
         form,
       );
 
-      setStatus(`Build #${createdBuild.id} created successfully.`);
+      setStatus({
+        tone: "success",
+        message: `Build #${createdBuild.id} created. Add a tweak snapshot next.`,
+      });
       setForm(initialForm);
       router.refresh();
     } catch (error) {
-      setStatus(
-        error instanceof Error ? error.message : "Could not create build.",
-      );
+      setStatus({
+        tone: "error",
+        message:
+          error instanceof Error ? error.message : "Could not create build.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -86,10 +105,11 @@ export function CreateBuildForm() {
         New build
       </p>
 
-      <h2 className="mt-2 text-2xl font-semibold">Register machine</h2>
+      <h2 className="mt-2 text-2xl font-semibold">Fixed hardware</h2>
 
-      <p className="mt-2 text-sm text-zinc-500">
-        Keep this as fixed hardware. BIOS and OS changes belong to snapshots.
+      <p className="mt-2 text-sm leading-6 text-zinc-500">
+        Only register the physical machine here. Use snapshots for BIOS, OS,
+        drivers, power plans and tuning changes.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
@@ -98,6 +118,7 @@ export function CreateBuildForm() {
           value={form.name}
           onChange={(value) => updateField("name", value)}
           placeholder="Main 12700K / 3080 Ti"
+          required
         />
 
         <TextInput
@@ -105,6 +126,7 @@ export function CreateBuildForm() {
           value={form.cpu}
           onChange={(value) => updateField("cpu", value)}
           placeholder="Intel Core i7-12700K"
+          required
         />
 
         <TextInput
@@ -112,6 +134,7 @@ export function CreateBuildForm() {
           value={form.gpu}
           onChange={(value) => updateField("gpu", value)}
           placeholder="MSI RTX 3080 Ti Gaming X Trio"
+          required
         />
 
         <NumberInput
@@ -122,12 +145,16 @@ export function CreateBuildForm() {
 
         <details className="group rounded-2xl border border-violet-950/70 bg-black/25 p-4">
           <summary className="cursor-pointer list-none text-sm font-medium text-zinc-300 transition hover:text-violet-200">
-            Optional system context
+            Optional platform context
             <span className="ml-2 text-zinc-600 group-open:hidden">+</span>
             <span className="ml-2 hidden text-zinc-600 group-open:inline">
               −
             </span>
           </summary>
+
+          <p className="mt-2 text-sm leading-6 text-zinc-600">
+            Useful for portfolio and audits. Do not put tweak state here.
+          </p>
 
           <div className="mt-4 grid gap-4">
             <TextInput
@@ -152,14 +179,14 @@ export function CreateBuildForm() {
             />
 
             <TextInput
-              label="Operating system"
+              label="OS base"
               value={form.operatingSystem}
               onChange={(value) => updateField("operatingSystem", value)}
               placeholder="Windows 11 AtlasOS 25H2"
             />
 
             <TextInput
-              label="GPU driver"
+              label="GPU driver baseline"
               value={form.gpuDriver}
               onChange={(value) => updateField("gpuDriver", value)}
               placeholder="596.36"
@@ -172,14 +199,10 @@ export function CreateBuildForm() {
           disabled={isSubmitting}
           className="rounded-2xl bg-violet-300 px-6 py-3 font-semibold text-black transition hover:bg-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? "Creating..." : "Create build"}
+          {isSubmitting ? "Creating..." : "Create fixed build"}
         </button>
 
-        {status && (
-          <p className="rounded-2xl border border-violet-950/80 bg-black/30 p-4 text-sm text-zinc-300">
-            {status}
-          </p>
-        )}
+        <StatusMessage status={status} />
 
         <a
           href="#registered-machines"
@@ -194,14 +217,19 @@ export function CreateBuildForm() {
 
 function FieldShell({
   label,
+  required = false,
   children,
 }: {
   label: string;
+  required?: boolean;
   children: ReactNode;
 }) {
   return (
     <label className="grid min-w-0 gap-2">
-      <span className="text-sm text-zinc-500">{label}</span>
+      <span className="text-sm text-zinc-500">
+        {label}
+        {required && <span className="text-violet-300"> *</span>}
+      </span>
       {children}
     </label>
   );
@@ -212,17 +240,20 @@ function TextInput({
   value,
   onChange,
   placeholder,
+  required = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  required?: boolean;
 }) {
   return (
-    <FieldShell label={label}>
+    <FieldShell label={label} required={required}>
       <input
         type="text"
         value={value}
+        required={required}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         className="w-full min-w-0 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-violet-300"
@@ -250,5 +281,24 @@ function NumberInput({
         className="w-full min-w-0 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition focus:border-violet-300"
       />
     </FieldShell>
+  );
+}
+
+function StatusMessage({ status }: { status: FormStatus }) {
+  if (!status.message) {
+    return null;
+  }
+
+  const toneClass =
+    status.tone === "success"
+      ? "border-green-500/30 bg-green-500/10 text-green-100"
+      : status.tone === "error"
+        ? "border-rose-500/30 bg-rose-500/10 text-rose-100"
+        : "border-violet-950/80 bg-black/30 text-zinc-300";
+
+  return (
+    <p className={`rounded-2xl border p-4 text-sm ${toneClass}`}>
+      {status.message}
+    </p>
   );
 }

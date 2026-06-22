@@ -75,6 +75,24 @@ async function getSnapshots(buildId: string): Promise<HardwareSnapshot[]> {
   }
 }
 
+function formatDateLabel(value: string | null | undefined) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default async function BuildSnapshotsPage({
   params,
 }: {
@@ -113,6 +131,8 @@ export default async function BuildSnapshotsPage({
     );
   }
 
+  const latestSnapshot = snapshots[0] ?? null;
+
   return (
     <>
       <AppHeader />
@@ -129,7 +149,7 @@ export default async function BuildSnapshotsPage({
               </Link>
 
               <p className="mt-8 text-sm font-medium uppercase tracking-[0.3em] text-violet-300">
-                Build #{build.id}
+                Build #{build.id} · tuning states
               </p>
 
               <h1 className="mt-3 max-w-4xl text-5xl font-black tracking-[-0.06em] md:text-7xl">
@@ -148,34 +168,79 @@ export default async function BuildSnapshotsPage({
           </header>
 
           <section className="mt-8 grid overflow-hidden rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 sm:grid-cols-3">
-            <SummaryItem label="Snapshots" value={snapshots.length} />
-            <SummaryText label="GPU driver" value={build.gpuDriver ?? "—"} />
-            <SummaryText label="OS" value={build.operatingSystem ?? "—"} />
+            <SummaryItem label="Tuning states" value={snapshots.length} />
+            <SummaryText
+              label="Latest state"
+              value={latestSnapshot?.name ?? "—"}
+            />
+            <SummaryText
+              label="Latest OS profile"
+              value={latestSnapshot?.operatingSystemProfile ?? "—"}
+            />
+          </section>
+
+          <section className="mt-8 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
+                  Snapshot rule
+                </p>
+
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+                  Every benchmark needs a state
+                </h2>
+              </div>
+
+              <p className="max-w-xl text-sm leading-6 text-zinc-500">
+                A snapshot is the exact tuning context that produced a run:
+                clocks, RAM, BIOS, OS, driver, power plan and tweak tags.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+              <ConceptCard
+                number="01"
+                title="Document state"
+                text="Save CPU, RAM, BIOS, OS, driver and tweak notes."
+              />
+              <ConceptCard
+                number="02"
+                title="Run benchmark"
+                text="Import CapFrameX against this exact snapshot."
+              />
+              <ConceptCard
+                number="03"
+                title="Compare honestly"
+                text="Use sessions to decide whether the tweak stays."
+              />
+            </div>
           </section>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[390px_1fr] lg:items-start">
             <CreateSnapshotForm buildId={build.id} />
 
             <section id="hardware-snapshots">
-              <div className="mb-5 rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 p-5">
-                <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-                  Hardware snapshots
-                </p>
+              <div className="mb-5 flex flex-col gap-3 rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 p-5 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
+                    Registered states
+                  </p>
 
-                <h2 className="mt-2 text-2xl font-semibold">
-                  Registered states
-                </h2>
+                  <h2 className="mt-2 text-2xl font-semibold">
+                    Tuning snapshots
+                  </h2>
+                </div>
 
-                <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-                  Each snapshot is a specific BIOS, OS, driver and tweak state.
-                  Import benchmark data against the exact state you tested.
+                <p className="max-w-xl text-sm leading-6 text-zinc-500">
+                  Create a new snapshot whenever BIOS, RAM, OS, driver, power
+                  plan or tweak stack changes.
                 </p>
               </div>
 
               {snapshots.length === 0 ? (
                 <EmptyState />
               ) : (
-                <div className="grid gap-5 xl:grid-cols-2">
+                <div className="grid gap-5">
                   {snapshots.map((snapshot) => (
                     <SnapshotCard key={snapshot.id} snapshot={snapshot} />
                   ))}
@@ -190,55 +255,64 @@ export default async function BuildSnapshotsPage({
 }
 
 function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
+  const tags = snapshot.tweakTags ?? [];
+
   return (
-    <article className="group min-w-0 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-5 shadow-2xl shadow-black/25 transition hover:border-violet-700/80">
-      <div className="flex min-w-0 items-start justify-between gap-4">
+    <article className="group min-w-0 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25 transition hover:border-violet-700/80">
+      <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-600">
-            Snapshot #{snapshot.id}
+            Snapshot #{snapshot.id} · tuning state
           </p>
 
-          <h3 className="mt-2 truncate text-2xl font-semibold text-zinc-50">
+          <h3 className="mt-2 truncate text-3xl font-semibold tracking-[-0.04em] text-zinc-50">
             {snapshot.name}
           </h3>
 
           <p className="mt-2 text-sm text-zinc-500">
-            Created at {snapshot.createdAt}
+            Registered {formatDateLabel(snapshot.createdAt)}
           </p>
         </div>
 
         <Link
           href="/import"
-          className="shrink-0 rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition group-hover:border-violet-300 group-hover:text-violet-200"
+          className="shrink-0 rounded-full border border-violet-900/80 bg-violet-950/20 px-4 py-2 text-sm font-medium text-zinc-300 transition group-hover:border-violet-300 group-hover:text-violet-200"
         >
-          Import
+          Import run
         </Link>
       </div>
 
-      <div className="mt-5 grid gap-3">
-        <MainSpec label="CPU OC" value={snapshot.cpuOverclock} />
-        <MainSpec label="RAM profile" value={snapshot.ramProfile} />
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <MainSpec label="CPU state" value={snapshot.cpuOverclock} />
+        <MainSpec label="RAM state" value={snapshot.ramProfile} />
+        <MainSpec label="OS profile" value={snapshot.operatingSystemProfile} />
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Spec label="OS profile" value={snapshot.operatingSystemProfile} />
-        <Spec label="Power plan" value={snapshot.powerPlan} />
-        <Spec
-          label="HAGS"
-          value={
-            snapshot.hagsEnabled === null
-              ? "—"
-              : snapshot.hagsEnabled
-                ? "Enabled"
-                : "Disabled"
-          }
-        />
-        <Spec label="GPU driver" value={snapshot.gpuDriver} />
+      <div className="mt-5 rounded-2xl border border-violet-950/70 bg-black/20 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
+          Import-critical context
+        </p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <InlineSpec label="Power plan" value={snapshot.powerPlan} />
+          <InlineSpec
+            label="HAGS"
+            value={
+              snapshot.hagsEnabled === null
+                ? "—"
+                : snapshot.hagsEnabled
+                  ? "Enabled"
+                  : "Disabled"
+            }
+          />
+          <InlineSpec label="GPU driver" value={snapshot.gpuDriver} />
+          <InlineSpec label="BIOS" value={snapshot.biosVersion} />
+        </div>
       </div>
 
-      {snapshot.tweakTags.length > 0 && (
+      {tags.length > 0 && (
         <div className="mt-5 flex flex-wrap gap-2">
-          {snapshot.tweakTags.slice(0, 6).map((tag) => (
+          {tags.slice(0, 8).map((tag) => (
             <span
               key={tag}
               className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-400"
@@ -247,9 +321,9 @@ function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
             </span>
           ))}
 
-          {snapshot.tweakTags.length > 6 && (
+          {tags.length > 8 && (
             <span className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-600">
-              +{snapshot.tweakTags.length - 6}
+              +{tags.length - 8}
             </span>
           )}
         </div>
@@ -257,16 +331,15 @@ function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
 
       <details className="mt-5 rounded-2xl border border-violet-950/70 bg-black/20">
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-zinc-400 transition hover:text-violet-200">
-          Advanced snapshot details
+          Advanced state details
         </summary>
 
-        <div className="grid gap-3 border-t border-violet-950/70 p-4 sm:grid-cols-2">
+        <div className="grid gap-3 border-t border-violet-950/70 p-4 sm:grid-cols-2 xl:grid-cols-3">
           <Spec label="RAM timings" value={snapshot.ramTimings} />
           <Spec label="tRFC" value={snapshot.trfc} />
           <Spec label="tREFI" value={snapshot.trefi} />
           <Spec label="Command rate" value={snapshot.commandRate} />
           <Spec label="Gear mode" value={snapshot.gearMode} />
-          <Spec label="BIOS version" value={snapshot.biosVersion} />
         </div>
 
         {snapshot.notes && (
@@ -288,8 +361,27 @@ function MainSpec({
 }) {
   return (
     <div className="min-w-0 rounded-2xl border border-violet-900/60 bg-violet-950/20 p-4">
+      <p className="text-xs uppercase tracking-[0.2em] text-zinc-600">
+        {label}
+      </p>
+      <p className="mt-2 truncate text-base font-semibold text-zinc-100">
+        {value ?? "—"}
+      </p>
+    </div>
+  );
+}
+
+function InlineSpec({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | null;
+}) {
+  return (
+    <div className="min-w-0 border-l border-violet-950/70 pl-3">
       <p className="text-xs text-zinc-600">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold text-zinc-100">
+      <p className="mt-1 truncate text-sm font-medium text-zinc-300">
         {value ?? "—"}
       </p>
     </div>
@@ -310,6 +402,24 @@ function Spec({
         {value ?? "—"}
       </p>
     </div>
+  );
+}
+
+function ConceptCard({
+  number,
+  title,
+  text,
+}: {
+  number: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <article className="rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+      <p className="font-mono text-sm text-violet-300">{number}</p>
+      <p className="mt-3 font-semibold text-zinc-100">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-zinc-500">{text}</p>
+    </article>
   );
 }
 
@@ -344,11 +454,13 @@ function SummaryText({ label, value }: { label: string; value: string }) {
 function EmptyState() {
   return (
     <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-8">
-      <h2 className="text-2xl font-semibold text-zinc-50">No snapshots yet</h2>
+      <h2 className="text-2xl font-semibold text-zinc-50">
+        No tuning states yet
+      </h2>
 
       <p className="mt-3 max-w-xl text-zinc-500">
-        Create the first hardware state on the left. After that, import
-        CapFrameX and HWiNFO data against this snapshot.
+        Create the first snapshot on the left. After that, import CapFrameX and
+        HWiNFO data against this exact state.
       </p>
     </section>
   );
