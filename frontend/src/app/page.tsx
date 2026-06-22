@@ -63,9 +63,9 @@ type DashboardSummary = {
 
 async function getDashboardSummary(): Promise<DashboardSummary | null> {
   try {
-const response = await fetch(buildApiUrl("/api/dashboard/summary"), {
-  cache: "no-store",
-});
+    const response = await fetch(buildApiUrl("/api/dashboard/summary"), {
+      cache: "no-store",
+    });
 
     if (!response.ok) {
       return null;
@@ -85,13 +85,7 @@ function formatNumber(value: number | null | undefined, suffix = "") {
   return `${value.toFixed(2)}${suffix}`;
 }
 
-function StatCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | string;
-}) {
+function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-5 shadow-sm">
       <p className="text-sm text-zinc-500">{label}</p>
@@ -166,20 +160,30 @@ export default async function Home() {
             summaries to understand if a change actually improves performance.
           </p>
           <div className="mt-6">
-  <Link
-    href="/sessions"
-    className="inline-flex rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
-  >
-    View performance sessions
-  </Link>
-</div>
+            <Link
+              href="/sessions"
+              className="inline-flex rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
+            >
+              View performance sessions
+            </Link>
+
+            <Link
+              href="/compare"
+              className="inline-flex rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
+            >
+              Compare sessions
+            </Link>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
           <StatCard label="Builds" value={summary.buildCount} />
           <StatCard label="Snapshots" value={summary.snapshotCount} />
           <StatCard label="Sessions" value={summary.sessionCount} />
-          <StatCard label="Sensor summaries" value={summary.sensorSummaryCount} />
+          <StatCard
+            label="Sensor summaries"
+            value={summary.sensorSummaryCount}
+          />
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -189,7 +193,10 @@ export default async function Home() {
                 <InfoRow label="Name" value={summary.latestBuild.name} />
                 <InfoRow label="CPU" value={summary.latestBuild.cpu} />
                 <InfoRow label="GPU" value={summary.latestBuild.gpu} />
-                <InfoRow label="RAM" value={`${summary.latestBuild.ramGb} GB`} />
+                <InfoRow
+                  label="RAM"
+                  value={`${summary.latestBuild.ramGb} GB`}
+                />
               </>
             ) : (
               <p className="text-sm text-zinc-500">No build registered yet.</p>
@@ -214,7 +221,9 @@ export default async function Home() {
                 />
               </>
             ) : (
-              <p className="text-sm text-zinc-500">No snapshot registered yet.</p>
+              <p className="text-sm text-zinc-500">
+                No snapshot registered yet.
+              </p>
             )}
           </SectionCard>
 
@@ -300,7 +309,10 @@ export default async function Home() {
                   </p>
                 </div>
                 <p className="text-4xl font-bold text-emerald-400">
-                  {formatNumber(summary.bestAverageFpsSession.averageFps, " fps")}
+                  {formatNumber(
+                    summary.bestAverageFpsSession.averageFps,
+                    " fps",
+                  )}
                 </p>
               </div>
             ) : (

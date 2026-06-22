@@ -82,6 +82,13 @@ export default async function SessionsPage() {
           >
             Back to dashboard
           </Link>
+
+          <Link
+            href="/compare"
+            className="rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
+          >
+            Compare sessions
+          </Link>
         </div>
 
         {sessions.length === 0 ? (
