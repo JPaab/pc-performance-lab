@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { uploadFile } from "@/lib/uploads";
 
 type HardwareSnapshot = {
@@ -30,6 +31,10 @@ type ImportFormsProps = {
 };
 
 export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
+  const router = useRouter();
+
+  const [availableSessions, setAvailableSessions] = useState(sessions);
+
   const [selectedSnapshotId, setSelectedSnapshotId] = useState("");
   const [selectedSessionId, setSelectedSessionId] = useState("");
 
@@ -42,6 +47,10 @@ export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
   const [isUploadingCapFrameX, setIsUploadingCapFrameX] = useState(false);
   const [isUploadingHwInfo, setIsUploadingHwInfo] = useState(false);
 
+  useEffect(() => {
+    setAvailableSessions(sessions);
+  }, [sessions]);
+
   async function handleCapFrameXUpload() {
     if (!selectedSnapshotId || !capFrameXFile) {
       setCapFrameXStatus("Select a snapshot and a CapFrameX JSON file first.");
@@ -52,14 +61,25 @@ export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
       setIsUploadingCapFrameX(true);
       setCapFrameXStatus("Uploading CapFrameX JSON...");
 
-      const createdSession = await uploadFile(
+      const createdSession = (await uploadFile(
         `/api/snapshots/${selectedSnapshotId}/sessions/import/capframex`,
         capFrameXFile,
-      );
+      )) as PerformanceSession;
+
+      setAvailableSessions((currentSessions) => [
+        createdSession,
+        ...currentSessions.filter(
+          (session) => session.id !== createdSession.id,
+        ),
+      ]);
+
+      setSelectedSessionId(String(createdSession.id));
 
       setCapFrameXStatus(
-        `Imported successfully. Created session #${createdSession.id}.`,
+        `Imported successfully. Created session #${createdSession.id}. You can now import the matching HWiNFO CSV without reloading.`,
       );
+
+      router.refresh();
     } catch (error) {
       setCapFrameXStatus(
         error instanceof Error ? error.message : "CapFrameX import failed.",
@@ -79,14 +99,16 @@ export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
       setIsUploadingHwInfo(true);
       setHwInfoStatus("Uploading HWiNFO CSV...");
 
-      const createdSummary = await uploadFile(
+      const createdSummary = (await uploadFile(
         `/api/sessions/${selectedSessionId}/sensor-summaries/import/hwinfo`,
         hwInfoFile,
-      );
+      )) as { id: number };
 
       setHwInfoStatus(
         `Imported successfully. Created sensor summary #${createdSummary.id}.`,
       );
+
+      router.refresh();
     } catch (error) {
       setHwInfoStatus(
         error instanceof Error ? error.message : "HWiNFO import failed.",
@@ -113,12 +135,12 @@ export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
         </p>
 
         <div className="mt-6 grid gap-4">
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="text-sm text-zinc-500">Hardware snapshot</span>
             <select
               value={selectedSnapshotId}
               onChange={(event) => setSelectedSnapshotId(event.target.value)}
-              className="rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-100 outline-none transition focus:border-emerald-400"
+              className="w-full min-w-0 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-100 outline-none transition focus:border-emerald-400"
             >
               <option value="">Select snapshot</option>
               {snapshots.map((snapshot) => (
@@ -129,7 +151,7 @@ export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
             </select>
           </label>
 
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="text-sm text-zinc-500">CapFrameX JSON</span>
             <input
               type="file"
@@ -137,7 +159,7 @@ export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
               onChange={(event) =>
                 setCapFrameXFile(event.target.files?.[0] ?? null)
               }
-              className="rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-emerald-400 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
+              className="w-full min-w-0 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-violet-300 file:text-black hover:file:bg-violet-200 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
             />
           </label>
 
@@ -171,15 +193,15 @@ export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
         </p>
 
         <div className="mt-6 grid gap-4">
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="text-sm text-zinc-500">Performance session</span>
             <select
               value={selectedSessionId}
               onChange={(event) => setSelectedSessionId(event.target.value)}
-              className="rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-100 outline-none transition focus:border-emerald-400"
+              className="w-full min-w-0 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-100 outline-none transition focus:border-emerald-400"
             >
               <option value="">Select session</option>
-              {sessions.map((session) => (
+              {availableSessions.map((session) => (
                 <option key={session.id} value={session.id}>
                   #{session.id} · {session.gameName} ·{" "}
                   {session.scenario ?? "No scenario"}
@@ -188,7 +210,7 @@ export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
             </select>
           </label>
 
-          <label className="grid gap-2">
+          <label className="grid min-w-0 gap-2">
             <span className="text-sm text-zinc-500">HWiNFO CSV</span>
             <input
               type="file"
@@ -196,7 +218,7 @@ export function ImportForms({ snapshots, sessions }: ImportFormsProps) {
               onChange={(event) =>
                 setHwInfoFile(event.target.files?.[0] ?? null)
               }
-              className="rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-emerald-400 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
+              className="w-full min-w-0 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-full file:border-0 file:bg-violet-300 file:text-black hover:file:bg-violet-200 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-black"
             />
           </label>
 

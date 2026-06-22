@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { postJson } from "@/lib/api";
@@ -80,19 +81,18 @@ export function CreateBuildForm() {
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-6">
-      <p className="text-sm font-medium uppercase tracking-[0.25em] text-emerald-400">
+    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/85 p-5 shadow-2xl shadow-black/30">
+      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
         New build
       </p>
 
-      <h2 className="mt-3 text-2xl font-semibold">Register PC build</h2>
+      <h2 className="mt-2 text-2xl font-semibold">Register PC</h2>
 
-      <p className="mt-3 text-sm text-zinc-500">
-        Add the base hardware profile. Snapshots will later describe BIOS,
-        Windows and tweak states.
+      <p className="mt-2 text-sm text-zinc-500">
+        Only the fixed hardware. Tweaks go into snapshots.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
+      <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
         <TextInput
           label="Build name"
           value={form.name}
@@ -111,72 +111,99 @@ export function CreateBuildForm() {
           label="GPU"
           value={form.gpu}
           onChange={(value) => updateField("gpu", value)}
-          placeholder="NVIDIA GeForce RTX 3080 Ti"
+          placeholder="RTX 3080 Ti"
         />
 
-        <label className="grid gap-2">
-          <span className="text-sm text-zinc-500">RAM GB</span>
-          <input
-            type="number"
-            min={1}
-            value={form.ramGb}
-            onChange={(event) =>
-              updateField("ramGb", Number(event.target.value))
-            }
-            className="rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-100 outline-none transition focus:border-emerald-400"
-          />
-        </label>
-
-        <TextInput
-          label="Motherboard"
-          value={form.motherboard}
-          onChange={(value) => updateField("motherboard", value)}
-          placeholder="MSI MAG Z690 Tomahawk WIFI DDR4"
+        <NumberInput
+          label="RAM GB"
+          value={form.ramGb}
+          onChange={(value) => updateField("ramGb", value)}
         />
 
-        <TextInput
-          label="Storage"
-          value={form.storage}
-          onChange={(value) => updateField("storage", value)}
-          placeholder="Corsair MP600 Pro XT 1TB"
-        />
+        <details className="group rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+          <summary className="cursor-pointer list-none text-sm font-medium text-zinc-300 transition hover:text-violet-200">
+            Optional system context
+            <span className="ml-2 text-zinc-600 group-open:hidden">+</span>
+            <span className="ml-2 hidden text-zinc-600 group-open:inline">
+              −
+            </span>
+          </summary>
 
-        <TextInput
-          label="Monitor"
-          value={form.monitor}
-          onChange={(value) => updateField("monitor", value)}
-          placeholder="AOC 240Hz"
-        />
+          <div className="mt-4 grid gap-4">
+            <TextInput
+              label="Motherboard"
+              value={form.motherboard}
+              onChange={(value) => updateField("motherboard", value)}
+              placeholder="MSI MAG Z690 Tomahawk"
+            />
 
-        <TextInput
-          label="Operating system"
-          value={form.operatingSystem}
-          onChange={(value) => updateField("operatingSystem", value)}
-          placeholder="Windows 11 Pro 25H2 / AtlasOS"
-        />
+            <TextInput
+              label="Storage"
+              value={form.storage}
+              onChange={(value) => updateField("storage", value)}
+              placeholder="Corsair MP600 Pro XT"
+            />
 
-        <TextInput
-          label="GPU driver"
-          value={form.gpuDriver}
-          onChange={(value) => updateField("gpuDriver", value)}
-          placeholder="596.36"
-        />
+            <TextInput
+              label="Monitor"
+              value={form.monitor}
+              onChange={(value) => updateField("monitor", value)}
+              placeholder="AOC 240Hz"
+            />
+
+            <TextInput
+              label="Operating system"
+              value={form.operatingSystem}
+              onChange={(value) => updateField("operatingSystem", value)}
+              placeholder="Windows 11 / AtlasOS"
+            />
+
+            <TextInput
+              label="GPU driver"
+              value={form.gpuDriver}
+              onChange={(value) => updateField("gpuDriver", value)}
+              placeholder="596.36"
+            />
+          </div>
+        </details>
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-black transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-2xl bg-violet-300 px-6 py-3 font-semibold text-black transition hover:bg-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? "Creating..." : "Create build"}
         </button>
 
         {status && (
-          <p className="rounded-xl border border-zinc-800 bg-black/40 p-4 text-sm text-zinc-300">
+          <p className="rounded-2xl border border-violet-950/80 bg-black/30 p-4 text-sm text-zinc-300">
             {status}
           </p>
         )}
+
+        <a
+          href="#registered-machines"
+          className="text-center text-sm font-medium text-violet-300 transition hover:text-violet-200 lg:hidden"
+        >
+          View registered machines ↓
+        </a>
       </form>
     </section>
+  );
+}
+
+function FieldShell({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="grid min-w-0 gap-2">
+      <span className="text-sm text-zinc-500">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -192,15 +219,36 @@ function TextInput({
   placeholder: string;
 }) {
   return (
-    <label className="grid gap-2">
-      <span className="text-sm text-zinc-500">{label}</span>
+    <FieldShell label={label}>
       <input
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-emerald-400"
+        className="w-full min-w-0 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-violet-300"
       />
-    </label>
+    </FieldShell>
+  );
+}
+
+function NumberInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <FieldShell label={label}>
+      <input
+        type="number"
+        min={1}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="w-full min-w-0 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition focus:border-violet-300"
+      />
+    </FieldShell>
   );
 }
