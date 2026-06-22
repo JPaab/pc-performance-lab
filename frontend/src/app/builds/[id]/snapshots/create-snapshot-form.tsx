@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { postJson } from "@/lib/api";
@@ -107,19 +108,18 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
   }
 
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-6">
-      <p className="text-sm font-medium uppercase tracking-[0.25em] text-emerald-400">
+    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/85 p-5 shadow-2xl shadow-black/30">
+      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
         New snapshot
       </p>
 
-      <h2 className="mt-3 text-2xl font-semibold">Register hardware state</h2>
+      <h2 className="mt-2 text-2xl font-semibold">Register state</h2>
 
-      <p className="mt-3 text-sm text-zinc-500">
-        Save a specific BIOS, Windows and tweak state before importing benchmark
-        data.
+      <p className="mt-2 text-sm text-zinc-500">
+        Save the exact BIOS, Windows and tweak state before importing a run.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
+      <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
         <TextInput
           label="Snapshot name"
           value={form.name}
@@ -142,47 +142,7 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
         />
 
         <TextInput
-          label="RAM timings"
-          value={form.ramTimings}
-          onChange={(value) => updateField("ramTimings", value)}
-          placeholder="16-19-19-38"
-        />
-
-        <NumberInput
-          label="tRFC"
-          value={form.trfc}
-          onChange={(value) => updateField("trfc", value)}
-        />
-
-        <NumberInput
-          label="tREFI"
-          value={form.trefi}
-          onChange={(value) => updateField("trefi", value)}
-        />
-
-        <TextInput
-          label="Command rate"
-          value={form.commandRate}
-          onChange={(value) => updateField("commandRate", value)}
-          placeholder="1N"
-        />
-
-        <TextInput
-          label="Gear mode"
-          value={form.gearMode}
-          onChange={(value) => updateField("gearMode", value)}
-          placeholder="Gear 1"
-        />
-
-        <TextInput
-          label="BIOS version"
-          value={form.biosVersion}
-          onChange={(value) => updateField("biosVersion", value)}
-          placeholder="E7D32IMS.1M0"
-        />
-
-        <TextInput
-          label="Operating system profile"
+          label="OS profile"
           value={form.operatingSystemProfile}
           onChange={(value) => updateField("operatingSystemProfile", value)}
           placeholder="Windows 11 AtlasOS 25H2"
@@ -195,58 +155,134 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
           placeholder="Atlas Performance"
         />
 
-        <TextInput
-          label="GPU driver"
-          value={form.gpuDriver}
-          onChange={(value) => updateField("gpuDriver", value)}
-          placeholder="596.36"
-        />
-
-        <label className="flex min-w-0 items-center gap-3 rounded-xl border border-zinc-800 bg-black px-4 py-3">
+        <label className="flex min-w-0 items-center gap-3 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3">
           <input
             type="checkbox"
             checked={form.hagsEnabled}
             onChange={(event) =>
               updateField("hagsEnabled", event.target.checked)
             }
-            className="h-4 w-4 shrink-0 accent-emerald-400"
+            className="h-4 w-4 shrink-0 accent-violet-300"
           />
+
           <span className="text-sm text-zinc-300">HAGS enabled</span>
         </label>
 
-        <TextInput
-          label="Tweak tags"
-          value={tagsInput}
-          onChange={setTagsInput}
-          placeholder="ATLASOS, 5B_LITE, DEFENDER_ENABLED, WINDOWS_UPDATE_USABLE"
-        />
+        <details className="group rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+          <summary className="cursor-pointer list-none text-sm font-medium text-zinc-300 transition hover:text-violet-200">
+            Advanced memory / BIOS context
+            <span className="ml-2 text-zinc-600 group-open:hidden">+</span>
+            <span className="ml-2 hidden text-zinc-600 group-open:inline">
+              −
+            </span>
+          </summary>
 
-        <label className="grid min-w-0 gap-2">
-          <span className="text-sm text-zinc-500">Notes</span>
-          <textarea
-            value={form.notes}
-            onChange={(event) => updateField("notes", event.target.value)}
-            placeholder="Stable checkpoint with timer/kernel/lazywrite tweaks..."
-            rows={4}
-            className="w-full min-w-0 resize-none rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-emerald-400"
-          />
-        </label>
+          <div className="mt-4 grid gap-4">
+            <TextInput
+              label="RAM timings"
+              value={form.ramTimings}
+              onChange={(value) => updateField("ramTimings", value)}
+              placeholder="16-19-19-38"
+            />
+
+            <NumberInput
+              label="tRFC"
+              value={form.trfc}
+              onChange={(value) => updateField("trfc", value)}
+            />
+
+            <NumberInput
+              label="tREFI"
+              value={form.trefi}
+              onChange={(value) => updateField("trefi", value)}
+            />
+
+            <TextInput
+              label="Command rate"
+              value={form.commandRate}
+              onChange={(value) => updateField("commandRate", value)}
+              placeholder="1N"
+            />
+
+            <TextInput
+              label="Gear mode"
+              value={form.gearMode}
+              onChange={(value) => updateField("gearMode", value)}
+              placeholder="Gear 1"
+            />
+
+            <TextInput
+              label="BIOS version"
+              value={form.biosVersion}
+              onChange={(value) => updateField("biosVersion", value)}
+              placeholder="E7D32IMS.1M0"
+            />
+
+            <TextInput
+              label="GPU driver"
+              value={form.gpuDriver}
+              onChange={(value) => updateField("gpuDriver", value)}
+              placeholder="596.36"
+            />
+
+            <TextInput
+              label="Tweak tags"
+              value={tagsInput}
+              onChange={setTagsInput}
+              placeholder="ATLASOS, 5B_LITE, DEFENDER_ENABLED"
+            />
+
+            <label className="grid min-w-0 gap-2">
+              <span className="text-sm text-zinc-500">Notes</span>
+
+              <textarea
+                value={form.notes}
+                onChange={(event) => updateField("notes", event.target.value)}
+                placeholder="Stable checkpoint with timer/kernel/lazywrite tweaks..."
+                rows={4}
+                className="w-full min-w-0 resize-none rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-violet-300"
+              />
+            </label>
+          </div>
+        </details>
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-black transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-2xl bg-violet-300 px-6 py-3 font-semibold text-black transition hover:bg-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? "Creating..." : "Create snapshot"}
         </button>
 
         {status && (
-          <p className="rounded-xl border border-zinc-800 bg-black/40 p-4 text-sm text-zinc-300">
+          <p className="rounded-2xl border border-violet-950/80 bg-black/30 p-4 text-sm text-zinc-300">
             {status}
           </p>
         )}
+
+        <a
+          href="#hardware-snapshots"
+          className="text-center text-sm font-medium text-violet-300 transition hover:text-violet-200 lg:hidden"
+        >
+          View hardware snapshots ↓
+        </a>
       </form>
     </section>
+  );
+}
+
+function FieldShell({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="grid min-w-0 gap-2">
+      <span className="text-sm text-zinc-500">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -262,16 +298,15 @@ function TextInput({
   placeholder: string;
 }) {
   return (
-    <label className="grid min-w-0 gap-2">
-      <span className="text-sm text-zinc-500">{label}</span>
+    <FieldShell label={label}>
       <input
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full min-w-0 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-emerald-400"
+        className="w-full min-w-0 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-violet-300"
       />
-    </label>
+    </FieldShell>
   );
 }
 
@@ -285,16 +320,15 @@ function NumberInput({
   onChange: (value: number | null) => void;
 }) {
   return (
-    <label className="grid min-w-0 gap-2">
-      <span className="text-sm text-zinc-500">{label}</span>
+    <FieldShell label={label}>
       <input
         type="number"
         value={value ?? ""}
         onChange={(event) =>
           onChange(event.target.value ? Number(event.target.value) : null)
         }
-        className="w-full min-w-0 rounded-xl border border-zinc-800 bg-black px-4 py-3 text-zinc-100 outline-none transition focus:border-emerald-400"
+        className="w-full min-w-0 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition focus:border-violet-300"
       />
-    </label>
+    </FieldShell>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppHeader } from "@/components/app-header";
 import { buildApiUrl } from "@/lib/api";
 import { CreateSnapshotForm } from "./create-snapshot-form";
 
@@ -66,27 +67,12 @@ async function getSnapshots(buildId: string): Promise<HardwareSnapshot[]> {
       return [];
     }
 
-    return response.json();
+    const snapshots = (await response.json()) as HardwareSnapshot[];
+
+    return snapshots.sort((a, b) => b.id - a.id);
   } catch {
     return [];
   }
-}
-
-function InfoRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number | boolean | null | undefined;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-zinc-900 py-3 last:border-b-0">
-      <span className="text-sm text-zinc-500">{label}</span>
-      <span className="text-right text-sm font-medium text-zinc-200">
-        {value === null || value === undefined ? "—" : String(value)}
-      </span>
-    </div>
-  );
 }
 
 export default async function BuildSnapshotsPage({
@@ -103,44 +89,50 @@ export default async function BuildSnapshotsPage({
 
   if (!build) {
     return (
-      <main className="min-h-screen bg-black px-6 py-10 text-zinc-100">
-        <div className="mx-auto max-w-6xl">
-          <Link
-            href="/builds"
-            className="text-sm font-medium text-emerald-400 hover:text-emerald-300"
-          >
-            ← Back to builds
-          </Link>
+      <>
+        <AppHeader />
 
-          <section className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-8">
-            <h1 className="text-3xl font-bold">Build not found</h1>
-            <p className="mt-3 text-zinc-500">
-              The backend did not return a PC build for this ID.
-            </p>
-          </section>
-        </div>
-      </main>
+        <main className="min-h-screen px-6 py-10 text-zinc-100">
+          <div className="mx-auto max-w-7xl">
+            <Link
+              href="/builds"
+              className="text-sm font-medium text-violet-300 transition hover:text-violet-200"
+            >
+              ← Back to builds
+            </Link>
+
+            <section className="mt-8 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-8">
+              <h1 className="text-3xl font-semibold">Build not found</h1>
+              <p className="mt-3 text-zinc-500">
+                The backend did not return a PC build for this ID.
+              </p>
+            </section>
+          </div>
+        </main>
+      </>
     );
   }
 
   return (
-    <main className="min-h-screen bg-black px-6 py-10 text-zinc-100">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-10">
-          <Link
-            href="/builds"
-            className="text-sm font-medium text-emerald-400 hover:text-emerald-300"
-          >
-            ← Back to builds
-          </Link>
+    <>
+      <AppHeader />
 
-          <div className="mt-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <main className="min-h-screen px-6 py-10 text-zinc-100">
+        <div className="mx-auto max-w-7xl">
+          <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-sm font-medium uppercase tracking-[0.3em] text-emerald-400">
+              <Link
+                href="/builds"
+                className="text-sm font-medium text-violet-300 transition hover:text-violet-200"
+              >
+                ← Back to builds
+              </Link>
+
+              <p className="mt-8 text-sm font-medium uppercase tracking-[0.3em] text-violet-300">
                 Build #{build.id}
               </p>
 
-              <h1 className="mt-3 text-4xl font-bold tracking-tight md:text-6xl">
+              <h1 className="mt-3 max-w-4xl text-5xl font-black tracking-[-0.06em] md:text-7xl">
                 {build.name}
               </h1>
 
@@ -150,120 +142,225 @@ export default async function BuildSnapshotsPage({
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                href="/import"
-                className="rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
-              >
-                Import data
-              </Link>
-
-              <Link
-                href="/sessions"
-                className="rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
-              >
-                Sessions
-              </Link>
+              <NavButton href="/import">Import run</NavButton>
+              <NavButton href="/sessions">Sessions</NavButton>
             </div>
+          </header>
+
+          <section className="mt-8 grid overflow-hidden rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 sm:grid-cols-3">
+            <SummaryItem label="Snapshots" value={snapshots.length} />
+            <SummaryText label="GPU driver" value={build.gpuDriver ?? "—"} />
+            <SummaryText label="OS" value={build.operatingSystem ?? "—"} />
+          </section>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-[390px_1fr] lg:items-start">
+            <CreateSnapshotForm buildId={build.id} />
+
+            <section id="hardware-snapshots">
+              <div className="mb-5 rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 p-5">
+                <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
+                  Hardware snapshots
+                </p>
+
+                <h2 className="mt-2 text-2xl font-semibold">
+                  Registered states
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+                  Each snapshot is a specific BIOS, OS, driver and tweak state.
+                  Import benchmark data against the exact state you tested.
+                </p>
+              </div>
+
+              {snapshots.length === 0 ? (
+                <EmptyState />
+              ) : (
+                <div className="grid gap-5 xl:grid-cols-2">
+                  {snapshots.map((snapshot) => (
+                    <SnapshotCard key={snapshot.id} snapshot={snapshot} />
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
         </div>
+      </main>
+    </>
+  );
+}
 
-        <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
-          <CreateSnapshotForm buildId={build.id} />
+function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
+  return (
+    <article className="group min-w-0 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-5 shadow-2xl shadow-black/25 transition hover:border-violet-700/80">
+      <div className="flex min-w-0 items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-600">
+            Snapshot #{snapshot.id}
+          </p>
 
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-6">
-            <h2 className="text-xl font-semibold">Hardware snapshots</h2>
+          <h3 className="mt-2 truncate text-2xl font-semibold text-zinc-50">
+            {snapshot.name}
+          </h3>
 
-            {snapshots.length === 0 ? (
-              <p className="mt-4 text-sm text-zinc-500">
-                No snapshots registered for this build yet. Create the first
-                snapshot using the form.
-              </p>
-            ) : (
-              <div className="mt-5 grid gap-4">
-                {snapshots.map((snapshot) => (
-                  <article
-                    key={snapshot.id}
-                    className="rounded-2xl border border-zinc-900 bg-black/40 p-5"
-                  >
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <p className="text-xs text-zinc-500">
-                          Snapshot #{snapshot.id}
-                        </p>
-                        <h3 className="mt-1 text-2xl font-semibold text-zinc-50">
-                          {snapshot.name}
-                        </h3>
-                      </div>
-
-                      <Link
-                        href="/import"
-                        className="rounded-full border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
-                      >
-                        Import benchmark
-                      </Link>
-                    </div>
-
-                    <div className="mt-5">
-                      <InfoRow
-                        label="CPU overclock"
-                        value={snapshot.cpuOverclock}
-                      />
-                      <InfoRow
-                        label="RAM profile"
-                        value={snapshot.ramProfile}
-                      />
-                      <InfoRow
-                        label="RAM timings"
-                        value={snapshot.ramTimings}
-                      />
-                      <InfoRow label="tRFC" value={snapshot.trfc} />
-                      <InfoRow label="tREFI" value={snapshot.trefi} />
-                      <InfoRow
-                        label="Command rate"
-                        value={snapshot.commandRate}
-                      />
-                      <InfoRow label="Gear mode" value={snapshot.gearMode} />
-                      <InfoRow
-                        label="BIOS version"
-                        value={snapshot.biosVersion}
-                      />
-                      <InfoRow
-                        label="OS profile"
-                        value={snapshot.operatingSystemProfile}
-                      />
-                      <InfoRow label="Power plan" value={snapshot.powerPlan} />
-                      <InfoRow
-                        label="HAGS enabled"
-                        value={snapshot.hagsEnabled}
-                      />
-                      <InfoRow label="GPU driver" value={snapshot.gpuDriver} />
-                    </div>
-
-                    {snapshot.tweakTags.length > 0 && (
-                      <div className="mt-5 flex flex-wrap gap-2">
-                        {snapshot.tweakTags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-zinc-900 px-3 py-1 text-xs text-zinc-400"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {snapshot.notes && (
-                      <p className="mt-5 border-t border-zinc-900 pt-4 text-sm text-zinc-500">
-                        {snapshot.notes}
-                      </p>
-                    )}
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+          <p className="mt-2 text-sm text-zinc-500">
+            Created at {snapshot.createdAt}
+          </p>
         </div>
+
+        <Link
+          href="/import"
+          className="shrink-0 rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition group-hover:border-violet-300 group-hover:text-violet-200"
+        >
+          Import
+        </Link>
       </div>
-    </main>
+
+      <div className="mt-5 grid gap-3">
+        <MainSpec label="CPU OC" value={snapshot.cpuOverclock} />
+        <MainSpec label="RAM profile" value={snapshot.ramProfile} />
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <Spec label="OS profile" value={snapshot.operatingSystemProfile} />
+        <Spec label="Power plan" value={snapshot.powerPlan} />
+        <Spec
+          label="HAGS"
+          value={
+            snapshot.hagsEnabled === null
+              ? "—"
+              : snapshot.hagsEnabled
+                ? "Enabled"
+                : "Disabled"
+          }
+        />
+        <Spec label="GPU driver" value={snapshot.gpuDriver} />
+      </div>
+
+      {snapshot.tweakTags.length > 0 && (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {snapshot.tweakTags.slice(0, 6).map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-400"
+            >
+              {tag}
+            </span>
+          ))}
+
+          {snapshot.tweakTags.length > 6 && (
+            <span className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-600">
+              +{snapshot.tweakTags.length - 6}
+            </span>
+          )}
+        </div>
+      )}
+
+      <details className="mt-5 rounded-2xl border border-violet-950/70 bg-black/20">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-zinc-400 transition hover:text-violet-200">
+          Advanced snapshot details
+        </summary>
+
+        <div className="grid gap-3 border-t border-violet-950/70 p-4 sm:grid-cols-2">
+          <Spec label="RAM timings" value={snapshot.ramTimings} />
+          <Spec label="tRFC" value={snapshot.trfc} />
+          <Spec label="tREFI" value={snapshot.trefi} />
+          <Spec label="Command rate" value={snapshot.commandRate} />
+          <Spec label="Gear mode" value={snapshot.gearMode} />
+          <Spec label="BIOS version" value={snapshot.biosVersion} />
+        </div>
+
+        {snapshot.notes && (
+          <p className="border-t border-violet-950/70 px-4 py-4 text-sm leading-6 text-zinc-500">
+            {snapshot.notes}
+          </p>
+        )}
+      </details>
+    </article>
+  );
+}
+
+function MainSpec({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | null;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-violet-900/60 bg-violet-950/20 p-4">
+      <p className="text-xs text-zinc-600">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-zinc-100">
+        {value ?? "—"}
+      </p>
+    </div>
+  );
+}
+
+function Spec({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | null;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-violet-950/60 bg-black/25 p-4">
+      <p className="text-xs text-zinc-600">{label}</p>
+      <p className="mt-1 truncate text-sm font-medium text-zinc-100">
+        {value ?? "—"}
+      </p>
+    </div>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="border-b border-violet-950/70 p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
+      <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
+        {label}
+      </p>
+
+      <p className="mt-2 text-4xl font-black tracking-[-0.05em] text-zinc-50">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function SummaryText({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 border-b border-violet-950/70 p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
+      <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
+        {label}
+      </p>
+
+      <p className="mt-2 truncate text-lg font-semibold text-zinc-50">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-8">
+      <h2 className="text-2xl font-semibold text-zinc-50">No snapshots yet</h2>
+
+      <p className="mt-3 max-w-xl text-zinc-500">
+        Create the first hardware state on the left. After that, import
+        CapFrameX and HWiNFO data against this snapshot.
+      </p>
+    </section>
+  );
+}
+
+function NavButton({ href, children }: { href: string; children: string }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-full border border-violet-900/80 bg-violet-950/20 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
+    >
+      {children}
+    </Link>
   );
 }
