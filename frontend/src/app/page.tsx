@@ -1,3 +1,5 @@
+import { buildApiUrl } from "@/lib/api";
+
 type BuildSummary = {
   id: number;
   name: string;
@@ -60,9 +62,9 @@ type DashboardSummary = {
 
 async function getDashboardSummary(): Promise<DashboardSummary | null> {
   try {
-    const response = await fetch("http://localhost:8080/api/dashboard/summary", {
-      cache: "no-store",
-    });
+const response = await fetch(buildApiUrl("/api/dashboard/summary"), {
+  cache: "no-store",
+});
 
     if (!response.ok) {
       return null;
