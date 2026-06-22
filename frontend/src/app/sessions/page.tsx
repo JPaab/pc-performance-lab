@@ -114,7 +114,8 @@ export default async function SessionsPage() {
 
                     <p className="mt-2 text-sm text-zinc-500">
                       {session.scenario ?? "No scenario"} · Snapshot #
-                      {session.snapshotId} · {formatDuration(session.durationSeconds)}
+                      {session.snapshotId} ·{" "}
+                      {formatDuration(session.durationSeconds)}
                     </p>
                   </div>
 
@@ -127,11 +128,29 @@ export default async function SessionsPage() {
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-5">
-                  <Metric label="1% Low" value={formatNumber(session.onePercentLowFps, " fps")} />
-                  <Metric label="0.1% Low" value={formatNumber(session.zeroPointOnePercentLowFps, " fps")} />
-                  <Metric label="P99 Frametime" value={formatNumber(session.p99FrameTimeMs, " ms")} />
-                  <Metric label="Stutters" value={session.stutterCount ?? "—"} />
-                  <Metric label="Dropped" value={session.droppedFrames ?? "—"} />
+                  <Metric
+                    label="1% Low"
+                    value={formatNumber(session.onePercentLowFps, " fps")}
+                  />
+                  <Metric
+                    label="0.1% Low"
+                    value={formatNumber(
+                      session.zeroPointOnePercentLowFps,
+                      " fps",
+                    )}
+                  />
+                  <Metric
+                    label="P99 Frametime"
+                    value={formatNumber(session.p99FrameTimeMs, " ms")}
+                  />
+                  <Metric
+                    label="Stutters"
+                    value={session.stutterCount ?? "—"}
+                  />
+                  <Metric
+                    label="Dropped"
+                    value={session.droppedFrames ?? "—"}
+                  />
                 </div>
 
                 {session.tags.length > 0 && (
@@ -152,6 +171,15 @@ export default async function SessionsPage() {
                     {session.notes}
                   </p>
                 )}
+
+                <div className="mt-5">
+                  <Link
+                    href={`/sessions/${session.id}`}
+                    className="inline-flex rounded-full border border-zinc-800 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
+                  >
+                    View session details
+                  </Link>
+                </div>
               </article>
             ))}
           </div>
@@ -161,13 +189,7 @@ export default async function SessionsPage() {
   );
 }
 
-function Metric({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-xl border border-zinc-900 bg-black/40 p-4">
       <p className="text-xs text-zinc-500">{label}</p>
