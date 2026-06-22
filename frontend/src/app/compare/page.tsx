@@ -1,6 +1,17 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { buildApiUrl } from "@/lib/api";
+import { CompareSelector } from "./compare-selector";
+
+type HardwareSnapshot = {
+  id: number;
+  buildId: number;
+  name: string;
+  operatingSystemProfile: string | null;
+  powerPlan: string | null;
+  hagsEnabled: boolean | null;
+  gpuDriver: string | null;
+};
 
 type PerformanceSession = {
   id: number;
@@ -64,11 +75,29 @@ async function getSessions(): Promise<PerformanceSession[]> {
   }
 }
 
+async function getSnapshots(): Promise<HardwareSnapshot[]> {
+  try {
+    const response = await fetch(buildApiUrl("/api/snapshots"), {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const snapshots = (await response.json()) as HardwareSnapshot[];
+
+    return snapshots.sort((a, b) => b.id - a.id);
+  } catch {
+    return [];
+  }
+}
+
 async function getComparison(
   s1?: string,
   s2?: string,
 ): Promise<PerformanceComparisonResult | null> {
-  if (!s1 || !s2) {
+  if (!s1 || !s2 || s1 === s2) {
     return null;
   }
 
@@ -321,8 +350,9 @@ export default async function ComparePage({
 }) {
   const params = await searchParams;
 
-  const [sessions, comparison] = await Promise.all([
+  const [sessions, snapshots, comparison] = await Promise.all([
     getSessions(),
+    getSnapshots(),
     getComparison(params.s1, params.s2),
   ]);
 
@@ -359,6 +389,7 @@ export default async function ComparePage({
 
           <CompareSelector
             sessions={sessions}
+            snapshots={snapshots}
             baselineId={params.s1}
             comparisonId={params.s2}
           />
@@ -384,92 +415,6 @@ export default async function ComparePage({
         </div>
       </main>
     </>
-  );
-}
-
-function CompareSelector({
-  sessions,
-  baselineId,
-  comparisonId,
-}: {
-  sessions: PerformanceSession[];
-  baselineId?: string;
-  comparisonId?: string;
-}) {
-  return (
-    <section className="mt-8 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
-      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-            Select runs
-          </p>
-
-          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-            Baseline vs candidate
-          </h2>
-        </div>
-
-        <p className="max-w-xl text-sm leading-6 text-zinc-500">
-          Baseline is the known-good state. Candidate is the tweak being judged.
-        </p>
-      </div>
-
-      <form className="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
-        <SessionSelect
-          label="Baseline"
-          name="s1"
-          sessions={sessions}
-          defaultValue={baselineId ?? ""}
-        />
-
-        <SessionSelect
-          label="Candidate"
-          name="s2"
-          sessions={sessions}
-          defaultValue={comparisonId ?? ""}
-        />
-
-        <button
-          type="submit"
-          className="rounded-2xl bg-violet-300 px-6 py-3 font-semibold text-black transition hover:bg-violet-200"
-        >
-          Compare
-        </button>
-      </form>
-    </section>
-  );
-}
-
-function SessionSelect({
-  label,
-  name,
-  sessions,
-  defaultValue,
-}: {
-  label: string;
-  name: string;
-  sessions: PerformanceSession[];
-  defaultValue: string;
-}) {
-  return (
-    <label className="grid min-w-0 gap-2">
-      <span className="text-sm text-zinc-500">{label}</span>
-
-      <select
-        name={name}
-        defaultValue={defaultValue}
-        className="w-full min-w-0 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition focus:border-violet-300"
-      >
-        <option value="">Select session</option>
-
-        {sessions.map((session) => (
-          <option key={session.id} value={session.id}>
-            #{session.id} · {session.gameName} ·{" "}
-            {session.scenario ?? "No scenario"}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }
 
