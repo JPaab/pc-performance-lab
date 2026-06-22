@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { buildApiUrl } from "@/lib/api";
 
@@ -108,23 +107,6 @@ function formatFps(value: number | null | undefined) {
   return `${Math.round(value)} fps`;
 }
 
-function formatDateLabel(value: string | null | undefined) {
-  if (!value) {
-    return "—";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-  });
-}
-
 function getDashboardCounts(summary: DashboardSummary): DashboardCounts {
   return {
     buildCount: summary.counts?.buildCount ?? summary.buildCount ?? 0,
@@ -181,15 +163,11 @@ export default async function HomePage() {
           ) : (
             <>
               <Hero summary={summary} />
-
-              <StatsRail counts={getDashboardCounts(summary)} />
-
-              <section className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-                <RunCommandCenter summary={summary} />
-                <NextActions summary={summary} />
-              </section>
-
-              <LabState summary={summary} />
+              <Workflow
+                summary={summary}
+                counts={getDashboardCounts(summary)}
+              />
+              <RunHighlights summary={summary} />
             </>
           )}
         </div>
@@ -199,12 +177,9 @@ export default async function HomePage() {
 }
 
 function Hero({ summary }: { summary: DashboardSummary }) {
-  const latestSession = summary.latestSession;
-  const latestFeel = latestSession ? getRunFeel(latestSession) : null;
-
   return (
     <section className="overflow-hidden rounded-[2rem] border border-violet-950/70 bg-[#0d0716]/80 shadow-2xl shadow-black/30">
-      <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid lg:grid-cols-[1.12fr_0.88fr]">
         <div className="min-w-0 p-8 md:p-10">
           <p className="text-sm font-medium uppercase tracking-[0.32em] text-violet-300">
             PC Performance Lab
@@ -219,320 +194,413 @@ function Hero({ summary }: { summary: DashboardSummary }) {
           </h1>
 
           <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400">
-            A command center for benchmark runs, hardware snapshots, CapFrameX
-            captures and HWiNFO sensor diagnostics.
+            Benchmark runs, tuning states and sensor logs in one clean flow.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
             <PrimaryLink href="/import">Import benchmark</PrimaryLink>
-            <SecondaryLink href="/compare">Compare sessions</SecondaryLink>
+            <SecondaryLink href="/sessions">View runs</SecondaryLink>
           </div>
         </div>
 
-        <div className="min-w-0 border-t border-violet-950/70 bg-black/25 p-8 md:p-10 lg:border-l lg:border-t-0">
-          <p className="text-xs font-medium uppercase tracking-[0.28em] text-zinc-600">
-            Latest run feel
-          </p>
-
-          {latestSession && latestFeel ? (
-            <div className="mt-5">
-              <div className="flex min-w-0 items-start justify-between gap-5">
-                <div className="min-w-0">
-                  <p className="truncate text-2xl font-semibold text-zinc-50">
-                    {latestSession.gameName}
-                  </p>
-
-                  <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
-                    {latestSession.scenario ?? "No scenario"} · Session #
-                    {latestSession.id}
-                  </p>
-                </div>
-
-                <Link
-                  href={`/sessions/${latestSession.id}`}
-                  className="shrink-0 rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
-                >
-                  Open
-                </Link>
-              </div>
-
-              <div className="mt-8 grid gap-3">
-                <HeroFeelRow
-                  label="Frame pacing"
-                  value={latestFeel.pacing.label}
-                  detail={latestFeel.pacing.detail}
-                  tone={latestFeel.pacing.tone}
-                />
-
-                <HeroFeelRow
-                  label="Low FPS stability"
-                  value={latestFeel.lows.label}
-                  detail={latestFeel.lows.detail}
-                  tone={latestFeel.lows.tone}
-                />
-
-                <HeroFeelRow
-                  label="Hitch risk"
-                  value={latestFeel.hitch.label}
-                  detail={latestFeel.hitch.detail}
-                  tone={latestFeel.hitch.tone}
-                />
-              </div>
-            </div>
-          ) : (
-            <p className="mt-5 text-sm text-zinc-500">
-              Import your first CapFrameX JSON to start tracking run feel.
-            </p>
-          )}
-        </div>
+        <BestOverallHero session={summary.bestAverageFpsSession} />
       </div>
     </section>
   );
 }
 
-function StatsRail({ counts }: { counts: DashboardCounts }) {
+function BestOverallHero({ session }: { session: SessionSummary | null }) {
   return (
-    <section className="mt-6 grid overflow-hidden rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 sm:grid-cols-2 lg:grid-cols-4">
-      <StatItem label="Builds" value={counts.buildCount} />
-      <StatItem label="Snapshots" value={counts.snapshotCount} />
-      <StatItem label="Runs" value={counts.sessionCount} />
-      <StatItem label="Sensor logs" value={counts.sensorSummaryCount} />
-    </section>
-  );
-}
-
-function RunCommandCenter({ summary }: { summary: DashboardSummary }) {
-  return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+    <div className="min-w-0 border-t border-violet-950/70 bg-black/25 p-8 md:p-10 lg:border-l lg:border-t-0">
+      <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-            Run command
+          <p className="text-xs font-medium uppercase tracking-[0.28em] text-zinc-600">
+            Best overall run
           </p>
 
-          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-            What deserves attention?
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-zinc-50">
+            Current winner
           </h2>
         </div>
 
-        <p className="max-w-xl text-sm leading-6 text-zinc-500">
-          Fastest average run, latest capture and sensor coverage in one place.
-        </p>
+        {session && (
+          <Link
+            href={`/sessions/${session.id}`}
+            className="shrink-0 rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
+          >
+            Open
+          </Link>
+        )}
       </div>
-
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <RunSpotlight
-          label="Latest capture"
-          session={summary.latestSession}
-          emptyText="No sessions imported yet."
-        />
-
-        <RunSpotlight
-          label="Fastest average"
-          session={summary.bestAverageFpsSession}
-          emptyText="No FPS data available yet."
-          highlighted
-        />
-      </div>
-    </section>
-  );
-}
-
-function RunSpotlight({
-  label,
-  session,
-  emptyText,
-  highlighted = false,
-}: {
-  label: string;
-  session: SessionSummary | null;
-  emptyText: string;
-  highlighted?: boolean;
-}) {
-  return (
-    <article
-      className={`min-w-0 rounded-3xl border p-5 ${
-        highlighted
-          ? "border-violet-500/40 bg-violet-500/10"
-          : "border-violet-950/70 bg-black/20"
-      }`}
-    >
-      <p className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-600">
-        {label}
-      </p>
 
       {!session ? (
-        <p className="mt-4 text-sm text-zinc-500">{emptyText}</p>
+        <p className="mt-6 text-sm text-zinc-500">
+          No benchmark run with FPS data yet.
+        </p>
       ) : (
         <>
-          <div className="mt-4 flex min-w-0 items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="truncate text-xl font-semibold text-zinc-50">
-                {session.gameName}
-              </p>
+          <div className="mt-6">
+            <p className="truncate text-2xl font-semibold text-zinc-50">
+              {session.gameName}
+            </p>
 
-              <p className="mt-1 line-clamp-2 text-sm text-zinc-500">
-                {session.scenario ?? "No scenario"} · Session #{session.id}
-              </p>
-            </div>
-
-            <Link
-              href={`/sessions/${session.id}`}
-              className="shrink-0 rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
-            >
-              Open
-            </Link>
+            <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
+              {session.scenario ?? "No scenario"} · Session #{session.id}
+            </p>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <MiniMetric label="Average" value={formatFps(session.averageFps)} />
-            <MiniMetric
+          <div className="mt-7">
+            <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
+              average fps
+            </p>
+
+            <p className="mt-1 text-6xl font-black tracking-[-0.06em] text-violet-300">
+              {formatNumber(session.averageFps)}
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <MiniInfo
               label="1% low"
               value={formatFps(session.onePercentLowFps)}
             />
-            <MiniMetric
+            <MiniInfo
               label="P99"
               value={formatNumber(session.p99FrameTimeMs, " ms")}
             />
+            <MiniInfo label="Stutters" value={session.stutterCount ?? "—"} />
           </div>
         </>
       )}
-    </article>
+    </div>
   );
 }
 
-function NextActions({ summary }: { summary: DashboardSummary }) {
-  const hasSessions = Boolean(summary.latestSession);
+function Workflow({
+  summary,
+  counts,
+}: {
+  summary: DashboardSummary;
+  counts: DashboardCounts;
+}) {
   const hasBuild = Boolean(summary.latestBuild);
   const hasSnapshot = Boolean(summary.latestSnapshot);
+  const hasSession = Boolean(summary.latestSession);
+  const canCompare = counts.sessionCount >= 2;
 
-  return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
-      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-        Next move
-      </p>
+  const snapshotHref = summary.latestSnapshot
+    ? `/builds/${summary.latestSnapshot.buildId}/snapshots`
+    : summary.latestBuild
+      ? `/builds/${summary.latestBuild.id}/snapshots`
+      : "/builds";
 
-      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-        Keep the test chain clean
-      </h2>
-
-      <div className="mt-6 grid gap-3">
-        <ActionRow
-          href="/builds"
-          title={hasBuild ? "Review hardware build" : "Create hardware build"}
-          text={
-            hasBuild
-              ? "Keep the physical setup documented."
-              : "Start with CPU, GPU, RAM and base hardware."
-          }
-          status={hasBuild ? "Ready" : "Missing"}
-          tone={hasBuild ? "good" : "warning"}
-        />
-
-        <ActionRow
-          href="/builds"
-          title={
-            hasSnapshot ? "Review tweak snapshot" : "Create tweak snapshot"
-          }
-          text={
-            hasSnapshot
-              ? "BIOS, OS, driver and power-plan state is tracked."
-              : "A benchmark without a snapshot is hard to trust."
-          }
-          status={hasSnapshot ? "Ready" : "Missing"}
-          tone={hasSnapshot ? "good" : "warning"}
-        />
-
-        <ActionRow
-          href="/import"
-          title="Import new run"
-          text="Feed CapFrameX JSON and attach HWiNFO CSV."
-          status="Action"
-          tone="info"
-        />
-
-        <ActionRow
-          href={hasSessions ? "/compare" : "/sessions"}
-          title={hasSessions ? "Compare tweaks" : "Open sessions"}
-          text={
-            hasSessions
-              ? "Decide whether the candidate deserves to stay."
-              : "Import runs first, then compare."
-          }
-          status={hasSessions ? "Ready" : "Waiting"}
-          tone={hasSessions ? "good" : "info"}
-        />
-      </div>
-    </section>
-  );
-}
-
-function LabState({ summary }: { summary: DashboardSummary }) {
   return (
     <section className="mt-8 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-            Lab state
+            Workflow
           </p>
 
           <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-            Latest tracked context
+            From hardware to decision
           </h2>
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-zinc-500">
-          The latest build, snapshot, run and sensor log. Enough context without
-          turning the dashboard into a data dump.
+          Complete one step to unlock the next. No benchmark should exist
+          without a hardware profile and a tuning state.
         </p>
       </div>
 
-      <div className="mt-6 divide-y divide-violet-950/70 overflow-hidden rounded-2xl border border-violet-950/70 bg-black/20">
-        <StateRow
-          label="Build"
-          title={summary.latestBuild?.name ?? "No build registered"}
-          description={
+      <div className="mt-6 grid gap-4 lg:grid-cols-4">
+        <WorkflowStep
+          href="/builds"
+          number="01"
+          title="Hardware"
+          text={
             summary.latestBuild
-              ? `${summary.latestBuild.cpu} · ${summary.latestBuild.gpu} · ${summary.latestBuild.ramGb} GB RAM`
-              : "Create a build before trusting benchmark history."
+              ? summary.latestBuild.name
+              : "Create a fixed hardware profile"
+          }
+          status={hasBuild ? "Done" : "Start"}
+          done={hasBuild}
+          locked={false}
+          footer={`${counts.buildCount} builds`}
+        />
+
+        <WorkflowStep
+          href={snapshotHref}
+          number="02"
+          title="Tuning state"
+          text={
+            !hasBuild
+              ? "Register hardware first"
+              : summary.latestSnapshot
+                ? summary.latestSnapshot.name
+                : "Save BIOS, OS, driver and tweak state"
+          }
+          status={!hasBuild ? "Locked" : hasSnapshot ? "Done" : "Next"}
+          done={hasSnapshot}
+          locked={!hasBuild}
+          footer={`${counts.snapshotCount} snapshots`}
+        />
+
+        <WorkflowStep
+          href="/import"
+          number="03"
+          title="Capture"
+          text={
+            !hasSnapshot
+              ? "Create a tuning state first"
+              : summary.latestSession
+                ? `${summary.latestSession.gameName} · ${formatFps(
+                    summary.latestSession.averageFps,
+                  )}`
+                : "Import CapFrameX and attach HWiNFO"
+          }
+          status={!hasSnapshot ? "Locked" : hasSession ? "Done" : "Next"}
+          done={hasSession}
+          locked={!hasSnapshot}
+          footer={`${counts.sessionCount} runs`}
+        />
+
+        <WorkflowStep
+          href="/compare"
+          number="04"
+          title="Decision"
+          text={
+            !hasSession
+              ? "Import runs first"
+              : canCompare
+                ? "Compare baseline vs candidate"
+                : "Needs at least two runs"
+          }
+          status={!hasSession ? "Locked" : canCompare ? "Ready" : "Waiting"}
+          done={canCompare}
+          locked={!hasSession}
+          footer="Keep what wins"
+        />
+      </div>
+    </section>
+  );
+}
+
+function WorkflowStep({
+  href,
+  number,
+  title,
+  text,
+  status,
+  done,
+  locked,
+  footer,
+}: {
+  href: string;
+  number: string;
+  title: string;
+  text: string;
+  status: string;
+  done: boolean;
+  locked: boolean;
+  footer: string;
+}) {
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <p
+          className={`font-mono text-sm ${
+            locked ? "text-zinc-700" : "text-violet-300"
+          }`}
+        >
+          {number}
+        </p>
+
+        <span
+          className={`rounded-full border px-3 py-1 text-xs font-medium ${
+            locked
+              ? "border-zinc-800 bg-black/20 text-zinc-700"
+              : done
+                ? "border-green-500/30 bg-green-500/10 text-green-300"
+                : "border-violet-950/80 bg-black/30 text-zinc-500"
+          }`}
+        >
+          {status}
+        </span>
+      </div>
+
+      <p
+        className={`mt-5 text-xl font-semibold tracking-[-0.03em] ${
+          locked ? "text-zinc-700" : "text-zinc-100"
+        }`}
+      >
+        {title}
+      </p>
+
+      <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-500">
+        {text}
+      </p>
+
+      <p
+        className={`mt-5 text-xs uppercase tracking-[0.2em] ${
+          locked ? "text-zinc-800" : "text-zinc-700 group-hover:text-violet-300"
+        }`}
+      >
+        {footer}
+      </p>
+    </>
+  );
+
+  if (locked) {
+    return (
+      <article className="min-w-0 cursor-not-allowed rounded-2xl border border-violet-950/40 bg-black/15 p-4 opacity-70">
+        {content}
+      </article>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="group min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4 transition hover:border-violet-400/70"
+    >
+      {content}
+    </Link>
+  );
+}
+
+function RunHighlights({ summary }: { summary: DashboardSummary }) {
+  return (
+    <section className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+      <LatestRunFeel session={summary.latestSession} />
+      <LatestInfo summary={summary} />
+    </section>
+  );
+}
+
+function LatestRunFeel({ session }: { session: SessionSummary | null }) {
+  const latestFeel = session ? getRunFeel(session) : null;
+
+  return (
+    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
+      <div className="flex items-start justify-between gap-5">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
+            Latest run feel
+          </p>
+
+          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+            Latest capture
+          </h2>
+        </div>
+
+        {session && (
+          <Link
+            href={`/sessions/${session.id}`}
+            className="shrink-0 rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
+          >
+            Open
+          </Link>
+        )}
+      </div>
+
+      {session && latestFeel ? (
+        <>
+          <div className="mt-6">
+            <p className="truncate text-2xl font-semibold text-zinc-50">
+              {session.gameName}
+            </p>
+
+            <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
+              {session.scenario ?? "No scenario"} · Session #{session.id}
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-3">
+            <HeroFeelRow
+              label="Frame pacing"
+              value={latestFeel.pacing.label}
+              detail={latestFeel.pacing.detail}
+              tone={latestFeel.pacing.tone}
+            />
+
+            <HeroFeelRow
+              label="Low FPS stability"
+              value={latestFeel.lows.label}
+              detail={latestFeel.lows.detail}
+              tone={latestFeel.lows.tone}
+            />
+
+            <HeroFeelRow
+              label="Hitch risk"
+              value={latestFeel.hitch.label}
+              detail={latestFeel.hitch.detail}
+              tone={latestFeel.hitch.tone}
+            />
+          </div>
+        </>
+      ) : (
+        <p className="mt-6 text-sm text-zinc-500">
+          Import your first CapFrameX JSON to start tracking run feel.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function LatestInfo({ summary }: { summary: DashboardSummary }) {
+  return (
+    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
+      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
+        Latest info
+      </p>
+
+      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+        Last tracked state
+      </h2>
+
+      <div className="mt-6 grid gap-3">
+        <LatestInfoRow
+          label="Build"
+          title={summary.latestBuild?.name ?? "No build"}
+          detail={
+            summary.latestBuild
+              ? `${summary.latestBuild.cpu} · ${summary.latestBuild.gpu}`
+              : "Create hardware profile first"
           }
           href="/builds"
         />
 
-        <StateRow
+        <LatestInfoRow
           label="Snapshot"
-          title={summary.latestSnapshot?.name ?? "No snapshot registered"}
-          description={
+          title={summary.latestSnapshot?.name ?? "No snapshot"}
+          detail={
             summary.latestSnapshot
               ? `${summary.latestSnapshot.operatingSystemProfile ?? "Unknown OS"} · ${
                   summary.latestSnapshot.powerPlan ?? "No power plan"
-                } · HAGS ${
-                  summary.latestSnapshot.hagsEnabled === null
-                    ? "unknown"
-                    : summary.latestSnapshot.hagsEnabled
-                      ? "enabled"
-                      : "disabled"
                 }`
-              : "Track BIOS, OS and driver state before comparing tweaks."
+              : "Create tuning state first"
           }
-          href="/builds"
+          href={
+            summary.latestSnapshot
+              ? `/builds/${summary.latestSnapshot.buildId}/snapshots`
+              : "/builds"
+          }
         />
 
-        <StateRow
+        <LatestInfoRow
           label="Run"
           title={
             summary.latestSession
               ? `${summary.latestSession.gameName} · Session #${summary.latestSession.id}`
-              : "No benchmark run imported"
+              : "No run"
           }
-          description={
+          detail={
             summary.latestSession
-              ? `${formatFps(summary.latestSession.averageFps)} average · ${formatFps(
+              ? `${formatFps(summary.latestSession.averageFps)} avg · ${formatFps(
                   summary.latestSession.onePercentLowFps,
-                )} 1% low · captured ${formatDateLabel(
-                  summary.latestSession.createdAt,
-                )}`
-              : "Import a CapFrameX JSON to start measuring performance."
+                )} 1% low`
+              : "Import CapFrameX first"
           }
           href={
             summary.latestSession
@@ -541,31 +609,69 @@ function LabState({ summary }: { summary: DashboardSummary }) {
           }
         />
 
-        <StateRow
+        <LatestInfoRow
           label="Sensors"
           title={
             summary.latestSensorSummary
               ? `HWiNFO summary #${summary.latestSensorSummary.id}`
-              : "No sensor summary imported"
+              : "No HWiNFO"
           }
-          description={
+          detail={
             summary.latestSensorSummary
               ? `${summary.latestSensorSummary.sampleCount} samples · CPU ${formatNumber(
                   summary.latestSensorSummary.cpuPackageTempAvg,
                   " °C",
-                )} avg · GPU ${formatNumber(
+                )} · GPU ${formatNumber(
                   summary.latestSensorSummary.gpuTemperatureAvg,
                   " °C",
-                )} avg · ${formatNumber(
-                  summary.latestSensorSummary.gpuPowerAvg,
-                  " W",
-                )} GPU power`
-              : "Attach HWiNFO CSV to make diagnostics and comparisons useful."
+                )}`
+              : "Attach sensor CSV after importing a run"
           }
           href="/import"
         />
       </div>
     </section>
+  );
+}
+
+function LatestInfoRow({
+  label,
+  title,
+  detail,
+  href,
+}: {
+  label: string;
+  title: string;
+  detail: string;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="grid gap-3 rounded-2xl border border-violet-950/70 bg-black/25 p-4 transition hover:border-violet-400/70 md:grid-cols-[110px_1fr_auto] md:items-center"
+    >
+      <p className="text-xs font-medium uppercase tracking-[0.22em] text-violet-300">
+        {label}
+      </p>
+
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-zinc-100">{title}</p>
+        <p className="mt-1 line-clamp-1 text-sm text-zinc-500">{detail}</p>
+      </div>
+
+      <span className="text-sm text-zinc-700">Open</span>
+    </Link>
+  );
+}
+
+function MiniInfo({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+      <p className="text-xs text-zinc-600">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-zinc-100">
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -701,99 +807,6 @@ function HeroFeelRow({
       </div>
 
       <p className="mt-1 text-sm text-zinc-500">{detail}</p>
-    </div>
-  );
-}
-
-function ActionRow({
-  href,
-  title,
-  text,
-  status,
-  tone,
-}: {
-  href: string;
-  title: string;
-  text: string;
-  status: string;
-  tone: Tone;
-}) {
-  return (
-    <Link
-      href={href}
-      className="grid min-w-0 grid-cols-[1fr_auto] gap-4 rounded-2xl border border-violet-950/70 bg-black/25 p-4 transition hover:border-violet-400 hover:bg-violet-950/20"
-    >
-      <div className="min-w-0">
-        <p className="truncate font-semibold text-zinc-100">{title}</p>
-        <p className="mt-1 line-clamp-2 text-sm text-zinc-500">{text}</p>
-      </div>
-
-      <span
-        className={`self-start rounded-full px-3 py-1 text-xs font-medium ${getToneClass(tone)}`}
-      >
-        {status}
-      </span>
-    </Link>
-  );
-}
-
-function StateRow({
-  label,
-  title,
-  description,
-  href,
-}: {
-  label: string;
-  title: string;
-  description: string;
-  href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="grid gap-3 px-5 py-4 transition hover:bg-violet-950/20 md:grid-cols-[160px_1fr_auto] md:items-center"
-    >
-      <p className="text-xs font-medium uppercase tracking-[0.22em] text-violet-300">
-        {label}
-      </p>
-
-      <div className="min-w-0">
-        <p className="truncate font-medium text-zinc-100">{title}</p>
-        <p className="mt-1 line-clamp-2 text-sm text-zinc-500">{description}</p>
-      </div>
-
-      <span className="text-sm text-zinc-600">Open</span>
-    </Link>
-  );
-}
-
-function StatItem({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="border-b border-violet-950/70 p-5 last:border-b-0 sm:border-r sm:last:border-r-0 lg:border-b-0">
-      <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
-        {label}
-      </p>
-
-      <p className="mt-2 text-4xl font-black tracking-[-0.05em] text-zinc-50">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function MiniMetric({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
-      <p className="text-xs text-zinc-600">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold text-zinc-100">
-        {value}
-      </p>
     </div>
   );
 }
