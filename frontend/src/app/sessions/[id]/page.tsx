@@ -232,7 +232,9 @@ function SessionHero({ session }: { session: PerformanceSession }) {
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <NavButton href="/compare">Compare this run</NavButton>
+            <NavButton href={`/compare?s2=${session.id}`}>
+              Compare this run
+            </NavButton>
             <NavButton href="/import">Import sensor data</NavButton>
           </div>
         </div>
