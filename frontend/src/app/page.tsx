@@ -173,6 +173,13 @@ export default async function Home() {
             >
               Compare sessions
             </Link>
+
+            <Link
+              href="/import"
+              className="inline-flex rounded-full border border-zinc-800 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-emerald-400 hover:text-emerald-400"
+            >
+              Import data
+            </Link>
           </div>
         </div>
 
