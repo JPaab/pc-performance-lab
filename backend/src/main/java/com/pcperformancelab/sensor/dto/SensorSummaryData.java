@@ -1,7 +1,7 @@
 package com.pcperformancelab.sensor.dto;
 
 public record SensorSummaryData(
-        Integer sampleCount,
+        int sampleCount,
 
         Double cpuPackageTempAvg,
         Double cpuPackageTempMax,
@@ -30,8 +30,15 @@ public record SensorSummaryData(
         Double gpuMemoryJunctionTemperatureMax,
         Double gpuEffectiveClockAvg,
         Double gpuEffectiveClockMax,
+
         Double cpuAverageEffectiveClockAvg,
         Double cpuAverageEffectiveClockMax,
+        Double cpuPcoreClockAvg,
+        Double cpuPcoreClockMax,
+        Double cpuEcoreClockAvg,
+        Double cpuEcoreClockMax,
+        Double cpuRingClockAvg,
+        Double cpuRingClockMax,
 
         Boolean cpuThermalThrottlingDetected,
         Boolean cpuPowerLimitDetected,

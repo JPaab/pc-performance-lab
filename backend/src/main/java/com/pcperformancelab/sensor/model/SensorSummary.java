@@ -75,6 +75,15 @@ public class SensorSummary {
     private Double cpuAverageEffectiveClockAvg;
     private Double cpuAverageEffectiveClockMax;
 
+    private Double cpuPcoreClockAvg;
+    private Double cpuPcoreClockMax;
+
+    private Double cpuEcoreClockAvg;
+    private Double cpuEcoreClockMax;
+
+    private Double cpuRingClockAvg;
+    private Double cpuRingClockMax;
+
     private Boolean cpuThermalThrottlingDetected = false;
     private Boolean cpuPowerLimitDetected = false;
     private Boolean cpuLimitReasonsDetected = false;

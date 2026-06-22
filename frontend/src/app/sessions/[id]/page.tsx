@@ -56,8 +56,15 @@ type SensorSummary = {
   gpuMemoryJunctionTemperatureMax: number | null;
   gpuEffectiveClockAvg: number | null;
   gpuEffectiveClockMax: number | null;
+
   cpuAverageEffectiveClockAvg: number | null;
   cpuAverageEffectiveClockMax: number | null;
+  cpuPcoreClockAvg: number | null;
+  cpuPcoreClockMax: number | null;
+  cpuEcoreClockAvg: number | null;
+  cpuEcoreClockMax: number | null;
+  cpuRingClockAvg: number | null;
+  cpuRingClockMax: number | null;
 
   cpuThermalThrottlingDetected: boolean;
   cpuPowerLimitDetected: boolean;
@@ -120,6 +127,14 @@ function formatNumber(value: number | null | undefined, suffix = "") {
   return `${value.toFixed(2)}${suffix}`;
 }
 
+function formatFps(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+
+  return `${Math.round(value)} fps`;
+}
+
 function formatDuration(seconds: number | null | undefined) {
   if (!seconds) {
     return "—";
@@ -177,10 +192,7 @@ export default async function SessionDetailPage({
 
           <SessionHero session={session} />
 
-          <section className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <PerformancePanel session={session} />
-            <RunContextPanel session={session} />
-          </section>
+          <PerformancePanel session={session} />
 
           <SensorSection sensorSummaries={sensorSummaries} />
 
@@ -237,13 +249,20 @@ function SessionHero({ session }: { session: PerformanceSession }) {
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
             <HeroMetric
               label="1% low"
-              value={formatNumber(session.onePercentLowFps)}
+              value={formatFps(session.onePercentLowFps)}
             />
             <HeroMetric
               label="P99"
               value={formatNumber(session.p99FrameTimeMs, " ms")}
             />
-            <HeroMetric label="Drops" value={session.droppedFrames ?? "—"} />
+            <HeroMetric
+              label="Drops"
+              value={
+                session.droppedFrames === null || session.droppedFrames === 0
+                  ? "Clean"
+                  : session.droppedFrames
+              }
+            />
           </div>
         </div>
       </div>
@@ -252,86 +271,219 @@ function SessionHero({ session }: { session: PerformanceSession }) {
 }
 
 function PerformancePanel({ session }: { session: PerformanceSession }) {
+  const feel = getPerformanceFeel(session);
+
   return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
-      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-        Performance
-      </p>
+    <section className="mt-8 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
+            Performance feel
+          </p>
 
-      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-        Frametime profile
-      </h2>
+          <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
+            How the run should feel
+          </h2>
+        </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <Metric label="Average FPS" value={formatNumber(session.averageFps)} />
-        <Metric
-          label="1% Low"
-          value={formatNumber(session.onePercentLowFps, " fps")}
+        <p className="max-w-xl text-sm leading-6 text-zinc-500">
+          A simpler read of the frametime data: pacing, low-FPS stability and
+          hitch risk instead of raw numbers only.
+        </p>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <InsightCard
+          label="Frame pacing"
+          value={feel.framePacing.label}
+          detail={feel.framePacing.detail}
+          tone={feel.framePacing.tone}
         />
-        <Metric
-          label="0.1% Low"
-          value={formatNumber(session.zeroPointOnePercentLowFps, " fps")}
+
+        <InsightCard
+          label="Low FPS stability"
+          value={feel.lowStability.label}
+          detail={feel.lowStability.detail}
+          tone={feel.lowStability.tone}
         />
-        <Metric
-          label="P95"
-          value={formatNumber(session.p95FrameTimeMs, " ms")}
+
+        <InsightCard
+          label="Hitch risk"
+          value={feel.hitchRisk.label}
+          detail={feel.hitchRisk.detail}
+          tone={feel.hitchRisk.tone}
         />
-        <Metric
-          label="P99"
-          value={formatNumber(session.p99FrameTimeMs, " ms")}
-        />
-        <Metric
-          label="P99.9"
-          value={formatNumber(session.p999FrameTimeMs, " ms")}
-        />
-        <Metric label="Stutters" value={session.stutterCount ?? "—"} />
-        <Metric label="Dropped frames" value={session.droppedFrames ?? "—"} />
-        <Metric
-          label="Duration"
-          value={formatDuration(session.durationSeconds)}
-        />
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-violet-950/70 bg-black/20 p-5">
+        <p className="text-sm font-semibold text-zinc-100">
+          Technical frame data
+        </p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <Metric label="Average" value={formatFps(session.averageFps)} />
+          <Metric label="1% low" value={formatFps(session.onePercentLowFps)} />
+          <Metric
+            label="0.1% low"
+            value={formatFps(session.zeroPointOnePercentLowFps)}
+          />
+          <Metric
+            label="P95 frame time"
+            value={formatNumber(session.p95FrameTimeMs, " ms")}
+          />
+          <Metric
+            label="P99 frame time"
+            value={formatNumber(session.p99FrameTimeMs, " ms")}
+          />
+          <Metric
+            label="Dropped frames"
+            value={
+              session.droppedFrames === null || session.droppedFrames === 0
+                ? "Clean"
+                : session.droppedFrames
+            }
+          />
+        </div>
       </div>
     </section>
   );
 }
 
-function RunContextPanel({ session }: { session: PerformanceSession }) {
-  return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
-      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-        Context
-      </p>
+function getPerformanceFeel(session: PerformanceSession) {
+  return {
+    framePacing: getFramePacingStatus(session.p99FrameTimeMs),
+    lowStability: getLowStabilityStatus(
+      session.averageFps,
+      session.onePercentLowFps,
+    ),
+    hitchRisk: getHitchRiskStatus(
+      session.p999FrameTimeMs,
+      session.droppedFrames,
+      session.stutterCount,
+    ),
+  };
+}
 
-      <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-        Run metadata
-      </h2>
+function getFramePacingStatus(p99FrameTimeMs: number | null) {
+  if (p99FrameTimeMs === null) {
+    return {
+      label: "No data",
+      detail: "Import a CapFrameX run to evaluate frame pacing.",
+      tone: "info" as const,
+    };
+  }
 
-      <div className="mt-6 grid gap-3">
-        <InfoLine label="Snapshot" value={`#${session.snapshotId}`} />
-        <InfoLine label="Source" value={session.sourceType} />
-        <InfoLine label="Created at" value={session.createdAt} />
-      </div>
+  if (p99FrameTimeMs <= 6) {
+    return {
+      label: "Very smooth",
+      detail: `99% of frames stay under ${formatNumber(p99FrameTimeMs, " ms")}.`,
+      tone: "good" as const,
+    };
+  }
 
-      {session.tags.length > 0 && (
-        <div className="mt-6">
-          <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
-            tags
-          </p>
+  if (p99FrameTimeMs <= 10) {
+    return {
+      label: "Smooth",
+      detail: `P99 is ${formatNumber(p99FrameTimeMs, " ms")}, still solid for high refresh gaming.`,
+      tone: "good" as const,
+    };
+  }
 
-          <div className="mt-3 flex flex-wrap gap-2">
-            {session.tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-400"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
-  );
+  if (p99FrameTimeMs <= 16.7) {
+    return {
+      label: "Watch spikes",
+      detail: `P99 is ${formatNumber(p99FrameTimeMs, " ms")}; the run may have visible pacing spikes.`,
+      tone: "warning" as const,
+    };
+  }
+
+  return {
+    label: "Rough pacing",
+    detail: `P99 is ${formatNumber(p99FrameTimeMs, " ms")}; this run likely has noticeable spikes.`,
+    tone: "bad" as const,
+  };
+}
+
+function getLowStabilityStatus(
+  averageFps: number | null,
+  onePercentLowFps: number | null,
+) {
+  if (!averageFps || !onePercentLowFps) {
+    return {
+      label: "No data",
+      detail: "Average FPS and 1% low are needed for stability scoring.",
+      tone: "info" as const,
+    };
+  }
+
+  const ratio = onePercentLowFps / averageFps;
+  const percent = Math.round(ratio * 100);
+
+  if (ratio >= 0.72) {
+    return {
+      label: "Strong lows",
+      detail: `1% low holds around ${percent}% of average FPS.`,
+      tone: "good" as const,
+    };
+  }
+
+  if (ratio >= 0.58) {
+    return {
+      label: "Decent lows",
+      detail: `1% low holds around ${percent}% of average FPS.`,
+      tone: "warning" as const,
+    };
+  }
+
+  return {
+    label: "Weak lows",
+    detail: `1% low only holds around ${percent}% of average FPS.`,
+    tone: "bad" as const,
+  };
+}
+
+function getHitchRiskStatus(
+  p999FrameTimeMs: number | null,
+  droppedFrames: number | null,
+  hitchEvents: number | null,
+) {
+  if ((droppedFrames ?? 0) > 0) {
+    return {
+      label: "Drops detected",
+      detail: `${droppedFrames} dropped frames were recorded during the run.`,
+      tone: "bad" as const,
+    };
+  }
+
+  if (p999FrameTimeMs === null && hitchEvents === null) {
+    return {
+      label: "No data",
+      detail: "P99.9 and hitch events are needed for a cleaner spike read.",
+      tone: "info" as const,
+    };
+  }
+
+  if ((hitchEvents ?? 0) === 0 && (p999FrameTimeMs ?? 0) <= 12) {
+    return {
+      label: "Clean",
+      detail: "No meaningful hitch pattern detected in this run.",
+      tone: "good" as const,
+    };
+  }
+
+  if ((p999FrameTimeMs ?? 0) <= 20) {
+    return {
+      label: "Minor spikes",
+      detail: `Worst-frame region sits around ${formatNumber(p999FrameTimeMs, " ms")}.`,
+      tone: "warning" as const,
+    };
+  }
+
+  return {
+    label: "Spike risk",
+    detail: `P99.9 reaches ${formatNumber(p999FrameTimeMs, " ms")}; this may explain micro-hitches.`,
+    tone: "bad" as const,
+  };
 }
 
 function SensorSection({
@@ -348,13 +500,13 @@ function SensorSection({
           </p>
 
           <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-            HWiNFO summaries
+            HWiNFO diagnostics
           </h2>
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-zinc-500">
-          Thermals, power, clocks and limiter flags from the imported HWiNFO
-          CSV.
+          Curated sensor metrics for tuning: thermals, power, real clocks and
+          load behavior.
         </p>
       </div>
 
@@ -375,141 +527,154 @@ function SensorSection({
 
 function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
   return (
-    <article className="overflow-hidden rounded-3xl border border-violet-950/70 bg-black/20">
-      <div className="flex flex-col gap-3 border-b border-violet-950/70 p-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-zinc-100">
-            {summary.sourceType}
-          </p>
+    <div className="grid gap-5 xl:grid-cols-3">
+      <HardwareDiagnosticsCard
+        title="CPU"
+        description="Thermals, package power and clocks that actually explain CPU-side behavior."
+      >
+        <MetricSection title="Thermals">
+          <SensorMetric
+            label="Package max"
+            value={formatNumber(summary.cpuPackageTempMax, " °C")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="Core max"
+            value={formatNumber(summary.cpuCoreMaxTempMax, " °C")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="Package avg"
+            value={formatNumber(summary.cpuPackageTempAvg, " °C")}
+          />
+        </MetricSection>
 
-          <p className="mt-1 text-sm text-zinc-500">
-            Summary #{summary.id} · {summary.sampleCount} samples
-          </p>
-        </div>
+        <MetricSection title="Power">
+          <SensorMetric
+            label="Package power avg"
+            value={formatNumber(summary.cpuPackagePowerAvg, " W")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="Package power max"
+            value={formatNumber(summary.cpuPackagePowerMax, " W")}
+          />
+        </MetricSection>
 
-        <p className="text-sm text-zinc-600">{summary.createdAt}</p>
-      </div>
+        <MetricSection title="Clocks / load">
+          <SensorMetric
+            label="P-core clock avg"
+            value={formatNumber(summary.cpuPcoreClockAvg, " MHz")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="P-core clock max"
+            value={formatNumber(summary.cpuPcoreClockMax, " MHz")}
+          />
+          <SensorMetric
+            label="E-core clock avg"
+            value={formatNumber(summary.cpuEcoreClockAvg, " MHz")}
+          />
+          <SensorMetric
+            label="Ring clock avg"
+            value={formatNumber(summary.cpuRingClockAvg, " MHz")}
+          />
+          <SensorMetric
+            label="Effective avg"
+            value={formatNumber(summary.cpuAverageEffectiveClockAvg, " MHz")}
+            hint="Load-weighted. It can look low because idle and lightly loaded cores are included."
+          />
+          <SensorMetric
+            label="CPU usage avg"
+            value={formatNumber(summary.totalCpuUsageAvg, " %")}
+          />
+        </MetricSection>
+      </HardwareDiagnosticsCard>
 
-      <div className="grid gap-0 lg:grid-cols-3">
-        <SensorGroup title="Thermals">
-          <SensorSubGroup title="CPU">
-            <SensorMetric
-              label="Package avg"
-              value={formatNumber(summary.cpuPackageTempAvg, " °C")}
-            />
-            <SensorMetric
-              label="Package max"
-              value={formatNumber(summary.cpuPackageTempMax, " °C")}
-            />
-            <SensorMetric
-              label="Core max"
-              value={formatNumber(summary.cpuCoreMaxTempMax, " °C")}
-            />
-          </SensorSubGroup>
+      <HardwareDiagnosticsCard
+        title="GPU"
+        description="Undervolt, boost, load and thermal margin in one readable block."
+      >
+        <MetricSection title="Thermals">
+          <SensorMetric
+            label="GPU temp max"
+            value={formatNumber(summary.gpuTemperatureMax, " °C")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="Hotspot max"
+            value={formatNumber(summary.gpuHotSpotTemperatureMax, " °C")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="Memory junction max"
+            value={formatNumber(summary.gpuMemoryJunctionTemperatureMax, " °C")}
+          />
+          <SensorMetric
+            label="GPU temp avg"
+            value={formatNumber(summary.gpuTemperatureAvg, " °C")}
+          />
+        </MetricSection>
 
-          <SensorSubGroup title="GPU">
-            <SensorMetric
-              label="GPU avg"
-              value={formatNumber(summary.gpuTemperatureAvg, " °C")}
-            />
-            <SensorMetric
-              label="GPU max"
-              value={formatNumber(summary.gpuTemperatureMax, " °C")}
-            />
-            <SensorMetric
-              label="Hotspot max"
-              value={formatNumber(summary.gpuHotSpotTemperatureMax, " °C")}
-            />
-            <SensorMetric
-              label="Memory junction max"
-              value={formatNumber(
-                summary.gpuMemoryJunctionTemperatureMax,
-                " °C",
-              )}
-            />
-          </SensorSubGroup>
-        </SensorGroup>
+        <MetricSection title="Power">
+          <SensorMetric
+            label="GPU power avg"
+            value={formatNumber(summary.gpuPowerAvg, " W")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="GPU power max"
+            value={formatNumber(summary.gpuPowerMax, " W")}
+          />
+        </MetricSection>
 
-        <SensorGroup title="Power">
-          <SensorSubGroup title="CPU">
-            <SensorMetric
-              label="Package power avg"
-              value={formatNumber(summary.cpuPackagePowerAvg, " W")}
-            />
-            <SensorMetric
-              label="Package power max"
-              value={formatNumber(summary.cpuPackagePowerMax, " W")}
-            />
-          </SensorSubGroup>
+        <MetricSection title="Clocks / load">
+          <SensorMetric
+            label="Effective clock avg"
+            value={formatNumber(summary.gpuEffectiveClockAvg, " MHz")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="Effective clock max"
+            value={formatNumber(summary.gpuEffectiveClockMax, " MHz")}
+          />
+          <SensorMetric
+            label="Core clock avg"
+            value={formatNumber(summary.gpuClockAvg, " MHz")}
+          />
+          <SensorMetric
+            label="Memory clock avg"
+            value={formatNumber(summary.gpuMemoryClockAvg, " MHz")}
+          />
+          <SensorMetric
+            label="GPU load avg"
+            value={formatNumber(summary.gpuCoreLoadAvg, " %")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="GPU load max"
+            value={formatNumber(summary.gpuCoreLoadMax, " %")}
+          />
+        </MetricSection>
+      </HardwareDiagnosticsCard>
 
-          <SensorSubGroup title="GPU">
-            <SensorMetric
-              label="GPU power avg"
-              value={formatNumber(summary.gpuPowerAvg, " W")}
-            />
-            <SensorMetric
-              label="GPU power max"
-              value={formatNumber(summary.gpuPowerMax, " W")}
-            />
-          </SensorSubGroup>
-
-          <SensorSubGroup title="Memory">
-            <SensorMetric
-              label="RAM load avg"
-              value={formatNumber(summary.physicalMemoryLoadAvg, " %")}
-            />
-            <SensorMetric
-              label="RAM load max"
-              value={formatNumber(summary.physicalMemoryLoadMax, " %")}
-            />
-          </SensorSubGroup>
-        </SensorGroup>
-
-        <SensorGroup title="Clocks / load">
-          <SensorSubGroup title="CPU">
-            <SensorMetric
-              label="CPU effective avg"
-              value={formatNumber(summary.cpuAverageEffectiveClockAvg, " MHz")}
-            />
-            <SensorMetric
-              label="CPU effective max"
-              value={formatNumber(summary.cpuAverageEffectiveClockMax, " MHz")}
-            />
-            <SensorMetric
-              label="CPU usage avg"
-              value={formatNumber(summary.totalCpuUsageAvg, " %")}
-            />
-          </SensorSubGroup>
-
-          <SensorSubGroup title="GPU">
-            <SensorMetric
-              label="GPU clock avg"
-              value={formatNumber(summary.gpuClockAvg, " MHz")}
-            />
-            <SensorMetric
-              label="GPU effective avg"
-              value={formatNumber(summary.gpuEffectiveClockAvg, " MHz")}
-            />
-            <SensorMetric
-              label="Memory clock avg"
-              value={formatNumber(summary.gpuMemoryClockAvg, " MHz")}
-            />
-            <SensorMetric
-              label="GPU load avg"
-              value={formatNumber(summary.gpuCoreLoadAvg, " %")}
-            />
-            <SensorMetric
-              label="GPU load max"
-              value={formatNumber(summary.gpuCoreLoadMax, " %")}
-            />
-            <SensorMetric
-              label="VRAM usage max"
-              value={formatNumber(summary.gpuMemoryUsageMax, " %")}
-            />
-          </SensorSubGroup>
-        </SensorGroup>
-      </div>
-    </article>
+      <HardwareDiagnosticsCard
+        title="RAM"
+        description="Only memory pressure from the run. Timings belong in the hardware snapshot."
+      >
+        <MetricSection title="System memory">
+          <SensorMetric
+            label="RAM load avg"
+            value={formatNumber(summary.physicalMemoryLoadAvg, " %")}
+            importance="primary"
+          />
+          <SensorMetric
+            label="RAM load max"
+            value={formatNumber(summary.physicalMemoryLoadMax, " %")}
+          />
+        </MetricSection>
+      </HardwareDiagnosticsCard>
+    </div>
   );
 }
 
@@ -604,18 +769,21 @@ function SensorHealthPanel({
             label="CPU thermal throttling"
             detected={sensorSummary.cpuThermalThrottlingDetected}
             severity="bad"
+            detectedText="Thermal throttle"
           />
 
           <HealthCheckRow
             label="CPU power limit"
             detected={sensorSummary.cpuPowerLimitDetected}
             severity="bad"
+            detectedText="Power limited"
           />
 
           <HealthCheckRow
             label="CPU limit reasons"
             detected={sensorSummary.cpuLimitReasonsDetected}
             severity="bad"
+            detectedText="Limit reason"
           />
         </div>
       </div>
@@ -632,24 +800,28 @@ function SensorHealthPanel({
             label="GPU thermal limit"
             detected={sensorSummary.gpuThermalLimitDetected}
             severity="bad"
+            detectedText="Thermal limit"
           />
 
           <HealthCheckRow
             label="GPU power limit"
             detected={sensorSummary.gpuPowerLimitDetected}
             severity="warning"
+            detectedText="Power capped"
           />
 
           <HealthCheckRow
             label="GPU reliability voltage"
             detected={sensorSummary.gpuReliabilityVoltageLimitDetected}
             severity="warning"
+            detectedText="Voltage capped"
           />
 
           <HealthCheckRow
             label="GPU max operating voltage"
             detected={sensorSummary.gpuMaxOperatingVoltageLimitDetected}
             severity="warning"
+            detectedText="Voltage ceiling"
           />
 
           <HealthCheckRow
@@ -754,6 +926,100 @@ function getGpuTone({
   return "good";
 }
 
+function InsightCard({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: HealthTone;
+}) {
+  return (
+    <div className="rounded-3xl border border-violet-950/70 bg-black/20 p-5">
+      <p className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-600">
+        {label}
+      </p>
+
+      <p className={`mt-3 text-2xl font-semibold ${getToneClass(tone)}`}>
+        {value}
+      </p>
+
+      <p className="mt-3 text-sm leading-6 text-zinc-500">{detail}</p>
+    </div>
+  );
+}
+
+function HardwareDiagnosticsCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl border border-violet-950/70 bg-black/20 p-5">
+      <div>
+        <p className="text-lg font-semibold text-zinc-100">{title}</p>
+        <p className="mt-1 text-sm leading-6 text-zinc-500">{description}</p>
+      </div>
+
+      <div className="mt-5 grid gap-5">{children}</div>
+    </section>
+  );
+}
+
+function MetricSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-violet-300">
+        {title}
+      </p>
+
+      <div className="mt-3 grid gap-3">{children}</div>
+    </section>
+  );
+}
+
+function SensorMetric({
+  label,
+  value,
+  importance = "normal",
+  hint,
+}: {
+  label: string;
+  value: string;
+  importance?: "normal" | "primary";
+  hint?: string;
+}) {
+  return (
+    <div className="min-w-0 border-b border-violet-950/60 pb-3 last:border-b-0">
+      <div className="flex min-w-0 items-center justify-between gap-4">
+        <p className="text-sm text-zinc-500">{label}</p>
+        <p
+          className={`truncate text-right text-sm font-semibold ${
+            importance === "primary" ? "text-violet-200" : "text-zinc-100"
+          }`}
+        >
+          {value}
+        </p>
+      </div>
+
+      {hint && <p className="mt-1 text-xs leading-5 text-zinc-600">{hint}</p>}
+    </div>
+  );
+}
+
 function VerdictCard({
   label,
   value,
@@ -840,64 +1106,6 @@ function HeroMetric({
     <div className="min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
       <p className="text-xs text-zinc-600">{label}</p>
       <p className="mt-1 truncate text-2xl font-bold text-zinc-100">{value}</p>
-    </div>
-  );
-}
-
-function InfoLine({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-4 border-b border-violet-950/70 py-3 last:border-b-0">
-      <p className="text-sm text-zinc-500">{label}</p>
-      <p className="truncate text-right text-sm font-medium text-zinc-100">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function SensorGroup({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="border-b border-violet-950/70 p-5 last:border-b-0 lg:border-b-0 lg:border-r lg:last:border-r-0">
-      <p className="text-xs font-medium uppercase tracking-[0.25em] text-violet-300">
-        {title}
-      </p>
-
-      <div className="mt-5 grid gap-4">{children}</div>
-    </section>
-  );
-}
-
-function SensorSubGroup({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-violet-950/70 bg-black/20 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-500">
-        {title}
-      </p>
-
-      <div className="mt-4 grid gap-3">{children}</div>
-    </div>
-  );
-}
-
-function SensorMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-4 border-b border-violet-950/60 pb-3 last:border-b-0">
-      <p className="text-sm text-zinc-500">{label}</p>
-      <p className="truncate text-right text-sm font-semibold text-zinc-100">
-        {value}
-      </p>
     </div>
   );
 }

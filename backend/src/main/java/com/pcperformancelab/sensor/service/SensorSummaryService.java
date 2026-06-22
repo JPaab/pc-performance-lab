@@ -105,6 +105,13 @@ public class SensorSummaryService {
         summary.setCpuAverageEffectiveClockAvg(data.cpuAverageEffectiveClockAvg());
         summary.setCpuAverageEffectiveClockMax(data.cpuAverageEffectiveClockMax());
 
+        summary.setCpuPcoreClockAvg(data.cpuPcoreClockAvg());
+        summary.setCpuPcoreClockMax(data.cpuPcoreClockMax());
+        summary.setCpuEcoreClockAvg(data.cpuEcoreClockAvg());
+        summary.setCpuEcoreClockMax(data.cpuEcoreClockMax());
+        summary.setCpuRingClockAvg(data.cpuRingClockAvg());
+        summary.setCpuRingClockMax(data.cpuRingClockMax());
+
         summary.setCpuThermalThrottlingDetected(Boolean.TRUE.equals(data.cpuThermalThrottlingDetected()));
         summary.setCpuPowerLimitDetected(Boolean.TRUE.equals(data.cpuPowerLimitDetected()));
         summary.setCpuLimitReasonsDetected(Boolean.TRUE.equals(data.cpuLimitReasonsDetected()));
