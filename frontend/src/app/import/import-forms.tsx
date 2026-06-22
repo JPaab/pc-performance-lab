@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { uploadFile } from "@/lib/uploads";
 
 type PcBuild = {
@@ -50,13 +50,23 @@ export function ImportForms({
   sessions: PerformanceSession[];
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const querySnapshotId = searchParams.get("snapshotId");
+
+  const initialSnapshotId =
+    querySnapshotId &&
+    snapshots.some((snapshot) => String(snapshot.id) === querySnapshotId)
+      ? querySnapshotId
+      : snapshots[0]
+        ? String(snapshots[0].id)
+        : "";
 
   const [availableSessions, setAvailableSessions] =
     useState<PerformanceSession[]>(sessions);
 
-  const [selectedSnapshotId, setSelectedSnapshotId] = useState(
-    snapshots[0] ? String(snapshots[0].id) : "",
-  );
+  const [selectedSnapshotId, setSelectedSnapshotId] =
+    useState(initialSnapshotId);
 
   const [selectedSessionId, setSelectedSessionId] = useState(
     sessions[0] ? String(sessions[0].id) : "",
@@ -107,7 +117,10 @@ export function ImportForms({
     setAvailableSessions(sessions);
 
     setSelectedSessionId((currentValue) => {
-      if (currentValue) {
+      if (
+        currentValue &&
+        sessions.some((session) => String(session.id) === currentValue)
+      ) {
         return currentValue;
       }
 
@@ -117,13 +130,23 @@ export function ImportForms({
 
   useEffect(() => {
     setSelectedSnapshotId((currentValue) => {
-      if (currentValue) {
+      if (
+        currentValue &&
+        snapshots.some((snapshot) => String(snapshot.id) === currentValue)
+      ) {
         return currentValue;
+      }
+
+      if (
+        querySnapshotId &&
+        snapshots.some((snapshot) => String(snapshot.id) === querySnapshotId)
+      ) {
+        return querySnapshotId;
       }
 
       return snapshots[0] ? String(snapshots[0].id) : "";
     });
-  }, [snapshots]);
+  }, [snapshots, querySnapshotId]);
 
   async function handleCapFrameXUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -131,7 +154,7 @@ export function ImportForms({
     if (!selectedSnapshotId) {
       setCapFrameXStatus({
         tone: "error",
-        message: "Select a hardware snapshot before importing CapFrameX.",
+        message: "Select a tuning state before importing CapFrameX.",
       });
       return;
     }
@@ -170,7 +193,7 @@ export function ImportForms({
 
       setCapFrameXStatus({
         tone: "success",
-        message: `Session #${createdSession.id} created. HWiNFO target was switched to this run.`,
+        message: `Session #${createdSession.id} created. HWiNFO target switched to this run.`,
       });
 
       router.refresh();
@@ -249,13 +272,13 @@ export function ImportForms({
           </p>
 
           <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-            Build the session properly
+            Build the session
           </h2>
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-zinc-500">
-          Import the performance file first. The created session is then
-          selected automatically for HWiNFO.
+          Click a tuning state, import CapFrameX, then attach HWiNFO to the
+          selected run.
         </p>
       </div>
 
@@ -266,39 +289,38 @@ export function ImportForms({
             title="Create performance session"
             description="CapFrameX JSON creates the run with FPS, lows, frametime and dropped-frame data."
           >
-            <SelectField
-              label="Target snapshot"
-              value={selectedSnapshotId}
-              onChange={setSelectedSnapshotId}
-              disabled={snapshots.length === 0}
-            >
-              {snapshots.length === 0 ? (
-                <option value="">No snapshots available</option>
-              ) : (
-                snapshots.map((snapshot) => (
-                  <option key={snapshot.id} value={snapshot.id}>
-                    #{snapshot.id} · {snapshot.name} ·{" "}
-                    {buildNameById.get(snapshot.buildId) ??
-                      `Build #${snapshot.buildId}`}
-                  </option>
-                ))
-              )}
-            </SelectField>
-
-            <TargetPreview
-              label="Snapshot target"
-              title={selectedSnapshot?.name ?? "No snapshot selected"}
-              description={
+            <CardSelectorHeader
+              label="Target tuning state"
+              value={
                 selectedSnapshot
-                  ? `${
-                      buildNameById.get(selectedSnapshot.buildId) ??
-                      `Build #${selectedSnapshot.buildId}`
-                    } · ${
-                      selectedSnapshot.operatingSystemProfile ?? "Unknown OS"
-                    } · ${selectedSnapshot.powerPlan ?? "No power plan"}`
-                  : "Create or select a snapshot before importing a benchmark."
+                  ? `Snapshot #${selectedSnapshot.id} selected`
+                  : "No snapshot selected"
               }
             />
+
+            {snapshots.length === 0 ? (
+              <EmptyChoice
+                title="No tuning states yet"
+                text="Create a build snapshot before importing a benchmark."
+                href="/builds"
+                action="Go to hardware"
+              />
+            ) : (
+              <div className="grid max-h-[420px] gap-3 overflow-y-auto pr-1">
+                {snapshots.map((snapshot) => (
+                  <SnapshotChoiceCard
+                    key={snapshot.id}
+                    snapshot={snapshot}
+                    buildName={
+                      buildNameById.get(snapshot.buildId) ??
+                      `Build #${snapshot.buildId}`
+                    }
+                    selected={String(snapshot.id) === selectedSnapshotId}
+                    onSelect={() => setSelectedSnapshotId(String(snapshot.id))}
+                  />
+                ))}
+              </div>
+            )}
 
             <FileInput
               key={capFrameXInputKey}
@@ -320,15 +342,6 @@ export function ImportForms({
             </button>
 
             <StatusMessage status={capFrameXStatus} />
-
-            {snapshots.length === 0 && (
-              <ImportWarning
-                title="Snapshot missing"
-                text="You need at least one build snapshot before importing a CapFrameX run."
-                href="/builds"
-                action="Create snapshot"
-              />
-            )}
           </ImportBlock>
         </form>
 
@@ -338,47 +351,39 @@ export function ImportForms({
             title="Attach sensor diagnostics"
             description="HWiNFO CSV adds thermals, power, clocks, load and limiter context to the selected session."
           >
-            <SelectField
-              label="Target session"
-              value={selectedSessionId}
-              onChange={setSelectedSessionId}
-              disabled={availableSessions.length === 0}
-            >
-              {availableSessions.length === 0 ? (
-                <option value="">No sessions available</option>
-              ) : (
-                availableSessions.map((session) => (
-                  <option key={session.id} value={session.id}>
-                    #{session.id} · {session.gameName} ·{" "}
-                    {session.scenario ?? "No scenario"}
-                  </option>
-                ))
-              )}
-            </SelectField>
-
-            <TargetPreview
-              label="HWiNFO will attach to"
-              title={
+            <CardSelectorHeader
+              label="Target run"
+              value={
                 selectedSession
-                  ? `${selectedSession.gameName} · Session #${selectedSession.id}`
+                  ? `Session #${selectedSession.id} selected`
                   : "No session selected"
               }
-              description={
-                selectedSession
-                  ? `${selectedSession.scenario ?? "No scenario"} · ${formatFps(
-                      selectedSession.averageFps,
-                    )} average · ${formatNumber(
-                      selectedSession.p99FrameTimeMs,
-                      " ms",
-                    )} P99`
-                  : "Import CapFrameX first, or select an existing session."
-              }
-              highlighted={Boolean(
-                latestImportedSession &&
-                selectedSession &&
-                latestImportedSession.id === selectedSession.id,
-              )}
             />
+
+            {availableSessions.length === 0 ? (
+              <EmptyChoice
+                title="No runs yet"
+                text="Import a CapFrameX JSON first. HWiNFO attaches after a session exists."
+                href="/import"
+                action="Import CapFrameX"
+              />
+            ) : (
+              <div className="grid max-h-[420px] gap-3 overflow-y-auto pr-1">
+                {availableSessions.map((session, index) => (
+                  <SessionChoiceCard
+                    key={session.id}
+                    session={session}
+                    selected={String(session.id) === selectedSessionId}
+                    latest={index === 0}
+                    freshlyImported={Boolean(
+                      latestImportedSession &&
+                      latestImportedSession.id === session.id,
+                    )}
+                    onSelect={() => setSelectedSessionId(String(session.id))}
+                  />
+                ))}
+              </div>
+            )}
 
             <FileInput
               key={hwInfoInputKey}
@@ -400,33 +405,6 @@ export function ImportForms({
             </button>
 
             <StatusMessage status={hwInfoStatus} />
-
-            {availableSessions.length === 0 && (
-              <ImportWarning
-                title="Session missing"
-                text="You need at least one performance session before attaching HWiNFO sensor data."
-                href="/import"
-                action="Import CapFrameX first"
-              />
-            )}
-
-            {selectedSessionId && (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Link
-                  href={`/sessions/${selectedSessionId}`}
-                  className="inline-flex justify-center rounded-2xl border border-violet-900/80 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
-                >
-                  Open session
-                </Link>
-
-                <Link
-                  href={`/compare?s2=${selectedSessionId}`}
-                  className="inline-flex justify-center rounded-2xl border border-violet-900/80 bg-violet-950/20 px-4 py-3 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
-                >
-                  Use as candidate
-                </Link>
-              </div>
-            )}
           </ImportBlock>
         </form>
       </div>
@@ -461,42 +439,165 @@ function ImportBlock({
   );
 }
 
-function TargetPreview({
+function CardSelectorHeader({
   label,
-  title,
-  description,
-  highlighted = false,
+  value,
 }: {
   label: string;
-  title: string;
-  description: string;
-  highlighted?: boolean;
+  value: string;
 }) {
   return (
-    <div
-      className={`rounded-2xl border p-4 ${
-        highlighted
-          ? "border-green-500/40 bg-green-500/10"
-          : "border-violet-950/70 bg-black/25"
-      }`}
-    >
-      <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
-        {label}
+    <div className="flex items-center justify-between gap-4">
+      <p className="text-sm text-zinc-500">{label}</p>
+      <p className="shrink-0 text-xs font-medium uppercase tracking-[0.18em] text-violet-300">
+        {value}
       </p>
-
-      <p className="mt-2 truncate font-semibold text-zinc-100">{title}</p>
-      <p className="mt-1 line-clamp-2 text-sm text-zinc-500">{description}</p>
-
-      {highlighted && (
-        <p className="mt-3 text-sm font-medium text-green-300">
-          Freshly imported run selected.
-        </p>
-      )}
     </div>
   );
 }
 
-function ImportWarning({
+function SnapshotChoiceCard({
+  snapshot,
+  buildName,
+  selected,
+  onSelect,
+}: {
+  snapshot: HardwareSnapshot;
+  buildName: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`min-w-0 rounded-2xl border p-4 text-left transition ${
+        selected
+          ? "border-violet-300 bg-violet-500/10"
+          : "border-violet-950/70 bg-black/25 hover:border-violet-500/70"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
+            Snapshot #{snapshot.id}
+          </p>
+
+          <p className="mt-2 truncate font-semibold text-zinc-100">
+            {snapshot.name}
+          </p>
+
+          <p className="mt-1 truncate text-sm text-zinc-500">{buildName}</p>
+        </div>
+
+        <span
+          className={`rounded-full border px-3 py-1 text-xs font-medium ${
+            selected
+              ? "border-violet-300/50 bg-violet-300/10 text-violet-200"
+              : "border-violet-950/80 bg-black/30 text-zinc-600"
+          }`}
+        >
+          {selected ? "Selected" : "Pick"}
+        </span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <MiniChip label="OS" value={snapshot.operatingSystemProfile} />
+        <MiniChip label="Power" value={snapshot.powerPlan} />
+        <MiniChip
+          label="HAGS"
+          value={
+            snapshot.hagsEnabled === null
+              ? null
+              : snapshot.hagsEnabled
+                ? "Enabled"
+                : "Disabled"
+          }
+        />
+        <MiniChip label="Driver" value={snapshot.gpuDriver} />
+      </div>
+    </button>
+  );
+}
+
+function SessionChoiceCard({
+  session,
+  selected,
+  latest,
+  freshlyImported,
+  onSelect,
+}: {
+  session: PerformanceSession;
+  selected: boolean;
+  latest: boolean;
+  freshlyImported: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`min-w-0 rounded-2xl border p-4 text-left transition ${
+        selected
+          ? freshlyImported
+            ? "border-green-400/60 bg-green-500/10"
+            : "border-violet-300 bg-violet-500/10"
+          : "border-violet-950/70 bg-black/25 hover:border-violet-500/70"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
+            Session #{session.id}
+          </p>
+
+          <p className="mt-2 truncate font-semibold text-zinc-100">
+            {session.gameName}
+          </p>
+
+          <p className="mt-1 line-clamp-1 text-sm text-zinc-500">
+            {session.scenario ?? "No scenario"} ·{" "}
+            {formatDateLabel(session.createdAt)}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {freshlyImported && (
+            <span className="rounded-full border border-green-400/40 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-300">
+              Fresh
+            </span>
+          )}
+
+          {!freshlyImported && latest && (
+            <span className="rounded-full border border-violet-300/40 bg-violet-300/10 px-3 py-1 text-xs font-medium text-violet-200">
+              Latest
+            </span>
+          )}
+
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${
+              selected
+                ? "border-violet-300/50 bg-violet-300/10 text-violet-200"
+                : "border-violet-950/80 bg-black/30 text-zinc-600"
+            }`}
+          >
+            {selected ? "Selected" : "Pick"}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <MiniMetric label="Average" value={formatFps(session.averageFps)} />
+        <MiniMetric
+          label="P99"
+          value={formatNumber(session.p99FrameTimeMs, " ms")}
+        />
+      </div>
+    </button>
+  );
+}
+
+function EmptyChoice({
   title,
   text,
   href,
@@ -508,13 +609,13 @@ function ImportWarning({
   action: string;
 }) {
   return (
-    <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
-      <p className="font-semibold text-rose-100">{title}</p>
-      <p className="mt-1 text-sm leading-6 text-rose-100/70">{text}</p>
+    <div className="rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+      <p className="font-semibold text-zinc-100">{title}</p>
+      <p className="mt-1 text-sm leading-6 text-zinc-500">{text}</p>
 
       <Link
         href={href}
-        className="mt-4 inline-flex rounded-full border border-rose-400/40 px-4 py-2 text-sm font-medium text-rose-100 transition hover:border-rose-200"
+        className="mt-4 inline-flex rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
       >
         {action}
       </Link>
@@ -522,32 +623,31 @@ function ImportWarning({
   );
 }
 
-function SelectField({
+function MiniChip({
   label,
   value,
-  onChange,
-  disabled,
-  children,
 }: {
   label: string;
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  children: ReactNode;
+  value: string | number | null;
 }) {
-  return (
-    <label className="grid min-w-0 gap-2">
-      <span className="text-sm text-zinc-500">{label}</span>
+  if (!value) {
+    return null;
+  }
 
-      <select
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-        className="w-full min-w-0 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3 text-zinc-100 outline-none transition focus:border-violet-300 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {children}
-      </select>
-    </label>
+  return (
+    <span className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-zinc-500">
+      <span className="text-zinc-700">{label}: </span>
+      <span className="text-zinc-400">{value}</span>
+    </span>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-violet-950/70 bg-black/25 px-3 py-2">
+      <p className="text-xs text-zinc-600">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-zinc-100">{value}</p>
+    </div>
   );
 }
 
@@ -607,4 +707,21 @@ function formatFps(value: number | null | undefined) {
   }
 
   return `${Math.round(value)} fps`;
+}
+
+function formatDateLabel(value: string | null | undefined) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+  });
 }

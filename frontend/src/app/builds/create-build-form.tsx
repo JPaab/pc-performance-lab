@@ -182,13 +182,6 @@ export function CreateBuildForm() {
               onChange={(value) => updateField("operatingSystem", value)}
               placeholder="Windows 11 AtlasOS 25H2"
             />
-
-            <TextInput
-              label="GPU driver baseline"
-              value={form.gpuDriver}
-              onChange={(value) => updateField("gpuDriver", value)}
-              placeholder="596.36"
-            />
           </div>
         </details>
 
