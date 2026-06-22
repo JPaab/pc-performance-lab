@@ -24,6 +24,24 @@ public record SensorSummaryData(
         Double gpuCoreLoadAvg,
         Double gpuCoreLoadMax,
         Double gpuMemoryUsageAvg,
-        Double gpuMemoryUsageMax
+        Double gpuMemoryUsageMax,
+
+        Double gpuMemoryJunctionTemperatureAvg,
+        Double gpuMemoryJunctionTemperatureMax,
+        Double gpuEffectiveClockAvg,
+        Double gpuEffectiveClockMax,
+        Double cpuAverageEffectiveClockAvg,
+        Double cpuAverageEffectiveClockMax,
+
+        Boolean cpuThermalThrottlingDetected,
+        Boolean cpuPowerLimitDetected,
+        Boolean cpuLimitReasonsDetected,
+
+        Boolean gpuPerformanceLimitDetected,
+        Boolean gpuPowerLimitDetected,
+        Boolean gpuThermalLimitDetected,
+        Boolean gpuReliabilityVoltageLimitDetected,
+        Boolean gpuMaxOperatingVoltageLimitDetected,
+        Boolean gpuUtilizationLimitDetected
 ) {
 }

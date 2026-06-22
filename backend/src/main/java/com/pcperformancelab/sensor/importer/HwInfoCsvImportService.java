@@ -1,186 +1,306 @@
 package com.pcperformancelab.sensor.importer;
 
 import com.pcperformancelab.sensor.dto.SensorSummaryData;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 @Service
 public class HwInfoCsvImportService {
 
     public SensorSummaryData parse(MultipartFile file) {
         try (
-                Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.ISO_8859_1);
-                CSVParser parser = CSVFormat.DEFAULT.parse(reader)
+                BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(file.getInputStream(), StandardCharsets.ISO_8859_1)
+                );
+                CSVParser csvParser = CSVFormat.DEFAULT.builder()
+                        .setTrim(true)
+                        .setIgnoreSurroundingSpaces(true)
+                        .build()
+                        .parse(reader)
         ) {
-            Iterator<CSVRecord> iterator = parser.iterator();
+            List<CSVRecord> allRecords = csvParser.getRecords();
 
-            if (!iterator.hasNext()) {
-                throw new ResponseStatusException(BAD_REQUEST, "HWiNFO CSV file is empty");
+            if (allRecords.isEmpty()) {
+                throw new IllegalArgumentException("HWiNFO CSV file is empty.");
             }
 
-            CSVRecord headerRecord = iterator.next();
-            Map<String, Integer> headerIndexes = buildHeaderIndex(headerRecord);
+            CSVRecord headerRecord = allRecords.get(0);
+            Map<String, List<Integer>> columnIndexesByName = buildColumnIndex(headerRecord);
+            List<CSVRecord> dataRecords = allRecords.subList(1, allRecords.size());
 
-            ColumnStats cpuPackageTemp = new ColumnStats();
-            ColumnStats cpuCoreMaxTemp = new ColumnStats();
-            ColumnStats cpuPackagePower = new ColumnStats();
-            ColumnStats totalCpuUsage = new ColumnStats();
-            ColumnStats physicalMemoryLoad = new ColumnStats();
+            return new SensorSummaryData(
+                    dataRecords.size(),
 
-            ColumnStats gpuTemperature = new ColumnStats();
-            ColumnStats gpuHotSpotTemperature = new ColumnStats();
-            ColumnStats gpuPower = new ColumnStats();
-            ColumnStats gpuClock = new ColumnStats();
-            ColumnStats gpuMemoryClock = new ColumnStats();
-            ColumnStats gpuCoreLoad = new ColumnStats();
-            ColumnStats gpuMemoryUsage = new ColumnStats();
+                    averageInRange(dataRecords, columnIndexesByName, -20, 130, "CPU Package [°C]"),
+                    maxInRange(dataRecords, columnIndexesByName, -20, 130, "CPU Package [°C]"),
+                    maxInRange(dataRecords, columnIndexesByName, -20, 130, "Core Max [°C]"),
 
-            int sampleCount = 0;
+                    averageInRange(dataRecords, columnIndexesByName, 0, 400, "CPU Package Power [W]"),
+                    maxInRange(dataRecords, columnIndexesByName, 0, 400, "CPU Package Power [W]"),
 
-            while (iterator.hasNext()) {
-                CSVRecord record = iterator.next();
+                    averageInRange(dataRecords, columnIndexesByName, 0, 100, "Total CPU Usage [%]"),
 
-                if (record.size() < 3) {
+                    averageInRange(dataRecords, columnIndexesByName, 0, 100, "Physical Memory Load [%]"),
+                    maxInRange(dataRecords, columnIndexesByName, 0, 100, "Physical Memory Load [%]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, -20, 130, "GPU Temperature [°C]"),
+                    maxInRange(dataRecords, columnIndexesByName, -20, 130, "GPU Temperature [°C]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, -20, 140, "GPU Hot Spot Temperature [°C]"),
+                    maxInRange(dataRecords, columnIndexesByName, -20, 140, "GPU Hot Spot Temperature [°C]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, 0, 700, "GPU Power [W]"),
+                    maxInRange(dataRecords, columnIndexesByName, 0, 700, "GPU Power [W]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, 0, 4000, "GPU Clock [MHz]"),
+                    maxInRange(dataRecords, columnIndexesByName, 0, 4000, "GPU Clock [MHz]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, 0, 12000, "GPU Memory Clock [MHz]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, 0, 100, "GPU Core Load [%]"),
+                    maxInRange(dataRecords, columnIndexesByName, 0, 100, "GPU Core Load [%]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, 0, 100, "GPU Memory Usage [%]"),
+                    maxInRange(dataRecords, columnIndexesByName, 0, 100, "GPU Memory Usage [%]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, -20, 130, "GPU Memory Junction Temperature [°C]"),
+                    maxInRange(dataRecords, columnIndexesByName, -20, 130, "GPU Memory Junction Temperature [°C]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, 0, 4000, "GPU Effective Clock [MHz]"),
+                    maxInRange(dataRecords, columnIndexesByName, 0, 4000, "GPU Effective Clock [MHz]"),
+
+                    averageInRange(dataRecords, columnIndexesByName, 0, 6000, "Average Effective Clock [MHz]"),
+                    maxInRange(dataRecords, columnIndexesByName, 0, 6000, "Average Effective Clock [MHz]"),
+
+                    anyYes(
+                            dataRecords,
+                            columnIndexesByName,
+                            "Core Thermal Throttling (avg) [Yes/No]",
+                            "Package/Ring Thermal Throttling [Yes/No]"
+                    ),
+                    anyYes(
+                            dataRecords,
+                            columnIndexesByName,
+                            "Core Power Limit Exceeded (avg) [Yes/No]",
+                            "Package/Ring Power Limit Exceeded [Yes/No]"
+                    ),
+                    anyYes(
+                            dataRecords,
+                            columnIndexesByName,
+                            "IA Limit Reasons (avg) [Yes/No]"
+                    ),
+
+                    anyYes(
+                            dataRecords,
+                            columnIndexesByName,
+                            "GPU Performance Limiters (avg) [Yes/No]"
+                    ),
+                    anyYes(
+                            dataRecords,
+                            columnIndexesByName,
+                            "Performance Limit - Power [Yes/No]"
+                    ),
+                    anyYes(
+                            dataRecords,
+                            columnIndexesByName,
+                            "Performance Limit - Thermal [Yes/No]"
+                    ),
+                    anyYes(
+                            dataRecords,
+                            columnIndexesByName,
+                            "Performance Limit - Reliability Voltage [Yes/No]"
+                    ),
+                    anyYes(
+                            dataRecords,
+                            columnIndexesByName,
+                            "Performance Limit - Max Operating Voltage [Yes/No]"
+                    ),
+                    anyYes(
+                            dataRecords,
+                            columnIndexesByName,
+                            "Performance Limit - Utilization [Yes/No]"
+                    )
+            );
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("Could not read HWiNFO CSV file.", exception);
+        }
+    }
+
+    private Map<String, List<Integer>> buildColumnIndex(CSVRecord headerRecord) {
+        Map<String, List<Integer>> columnIndexesByName = new LinkedHashMap<>();
+
+        for (int index = 0; index < headerRecord.size(); index++) {
+            String rawHeader = headerRecord.get(index);
+
+            if (rawHeader == null) {
+                continue;
+            }
+
+            String header = rawHeader
+                    .trim()
+                    .replace("\uFEFF", "")
+                    .replace("\"", "");
+
+            if (header.isBlank()) {
+                continue;
+            }
+
+            columnIndexesByName
+                    .computeIfAbsent(header, ignored -> new ArrayList<>())
+                    .add(index);
+        }
+
+        return columnIndexesByName;
+    }
+
+    private Double averageInRange(
+            List<CSVRecord> records,
+            Map<String, List<Integer>> columnIndexesByName,
+            double min,
+            double max,
+            String... columnNames
+    ) {
+        double sum = 0.0;
+        int count = 0;
+
+        for (CSVRecord record : records) {
+            Double value = readNumber(record, columnIndexesByName, columnNames);
+
+            if (!isInRange(value, min, max)) {
+                continue;
+            }
+
+            sum += value;
+            count++;
+        }
+
+        return count == 0 ? null : sum / count;
+    }
+
+    private Double maxInRange(
+            List<CSVRecord> records,
+            Map<String, List<Integer>> columnIndexesByName,
+            double min,
+            double max,
+            String... columnNames
+    ) {
+        Double maxValue = null;
+
+        for (CSVRecord record : records) {
+            Double value = readNumber(record, columnIndexesByName, columnNames);
+
+            if (!isInRange(value, min, max)) {
+                continue;
+            }
+
+            if (maxValue == null || value > maxValue) {
+                maxValue = value;
+            }
+        }
+
+        return maxValue;
+    }
+
+    private boolean isInRange(Double value, double min, double max) {
+        return value != null && value >= min && value <= max;
+    }
+
+    private Double readNumber(
+            CSVRecord record,
+            Map<String, List<Integer>> columnIndexesByName,
+            String... columnNames
+    ) {
+        for (String columnName : columnNames) {
+            List<Integer> columnIndexes = columnIndexesByName.get(columnName);
+
+            if (columnIndexes == null || columnIndexes.isEmpty()) {
+                continue;
+            }
+
+            for (Integer columnIndex : columnIndexes) {
+                if (columnIndex >= record.size()) {
                     continue;
                 }
 
-                sampleCount++;
+                String rawValue = record.get(columnIndex);
+                Double parsedValue = parseNumber(rawValue);
 
-                cpuPackageTemp.add(readDouble(record, headerIndexes, "CPU Package [°C]"));
-                cpuCoreMaxTemp.add(readDouble(record, headerIndexes, "Core Max [°C]"));
-                cpuPackagePower.add(readDouble(record, headerIndexes, "CPU Package Power [W]"));
-                totalCpuUsage.add(readDouble(record, headerIndexes, "Total CPU Usage [%]"));
-                physicalMemoryLoad.add(readDouble(record, headerIndexes, "Physical Memory Load [%]"));
-
-                gpuTemperature.add(readDouble(record, headerIndexes, "GPU Temperature [°C]"));
-                gpuHotSpotTemperature.add(readDouble(record, headerIndexes, "GPU Hot Spot Temperature [°C]"));
-                gpuPower.add(readDouble(record, headerIndexes, "GPU Power [W]"));
-                gpuClock.add(readDouble(record, headerIndexes, "GPU Clock [MHz]"));
-                gpuMemoryClock.add(readDouble(record, headerIndexes, "GPU Memory Clock [MHz]"));
-                gpuCoreLoad.add(readDouble(record, headerIndexes, "GPU Core Load [%]"));
-                gpuMemoryUsage.add(readDouble(record, headerIndexes, "GPU Memory Usage [%]"));
-            }
-
-            if (sampleCount == 0) {
-                throw new ResponseStatusException(BAD_REQUEST, "HWiNFO CSV file does not contain sensor rows");
-            }
-
-            return new SensorSummaryData(
-                    sampleCount,
-
-                    cpuPackageTemp.average(),
-                    cpuPackageTemp.max(),
-                    cpuCoreMaxTemp.max(),
-                    cpuPackagePower.average(),
-                    cpuPackagePower.max(),
-                    totalCpuUsage.average(),
-                    physicalMemoryLoad.average(),
-                    physicalMemoryLoad.max(),
-
-                    gpuTemperature.average(),
-                    gpuTemperature.max(),
-                    gpuHotSpotTemperature.average(),
-                    gpuHotSpotTemperature.max(),
-                    gpuPower.average(),
-                    gpuPower.max(),
-                    gpuClock.average(),
-                    gpuClock.max(),
-                    gpuMemoryClock.average(),
-                    gpuCoreLoad.average(),
-                    gpuCoreLoad.max(),
-                    gpuMemoryUsage.average(),
-                    gpuMemoryUsage.max()
-            );
-        } catch (IOException exception) {
-            throw new ResponseStatusException(BAD_REQUEST, "Invalid HWiNFO CSV file");
-        }
-    }
-
-    private Map<String, Integer> buildHeaderIndex(CSVRecord headerRecord) {
-        Map<String, Integer> indexes = new HashMap<>();
-
-        for (int index = 0; index < headerRecord.size(); index++) {
-            String header = headerRecord.get(index);
-
-            if (header != null && !header.isBlank()) {
-                indexes.putIfAbsent(header.trim(), index);
+                if (parsedValue != null) {
+                    return parsedValue;
+                }
             }
         }
 
-        return indexes;
+        return null;
     }
 
-    private Double readDouble(CSVRecord record, Map<String, Integer> headerIndexes, String columnName) {
-        Integer index = headerIndexes.get(columnName);
-
-        if (index == null || index >= record.size()) {
+    private Double parseNumber(String rawValue) {
+        if (rawValue == null) {
             return null;
         }
 
-        String rawValue = record.get(index);
+        String normalizedValue = rawValue
+                .trim()
+                .replace("\uFEFF", "")
+                .replace("\"", "");
 
-        if (rawValue == null || rawValue.isBlank()) {
+        if (normalizedValue.isBlank()) {
             return null;
         }
 
         try {
-            return Double.parseDouble(rawValue.trim().replace(",", "."));
-        } catch (NumberFormatException exception) {
+            return Double.parseDouble(normalizedValue);
+        } catch (NumberFormatException ignored) {
             return null;
         }
     }
 
-    private static class ColumnStats {
+    private Boolean anyYes(
+            List<CSVRecord> records,
+            Map<String, List<Integer>> columnIndexesByName,
+            String... columnNames
+    ) {
+        for (CSVRecord record : records) {
+            for (String columnName : columnNames) {
+                List<Integer> columnIndexes = columnIndexesByName.get(columnName);
 
-        private int count;
-        private double sum;
-        private Double max;
+                if (columnIndexes == null || columnIndexes.isEmpty()) {
+                    continue;
+                }
 
-        void add(Double value) {
-            if (value == null || value.isNaN() || value.isInfinite()) {
-                return;
-            }
+                for (Integer columnIndex : columnIndexes) {
+                    if (columnIndex >= record.size()) {
+                        continue;
+                    }
 
-            count++;
-            sum += value;
+                    String rawValue = record.get(columnIndex);
 
-            if (max == null || value > max) {
-                max = value;
+                    if (rawValue == null) {
+                        continue;
+                    }
+
+                    String normalizedValue = rawValue.trim();
+
+                    if (normalizedValue.equalsIgnoreCase("Yes")
+                            || normalizedValue.equalsIgnoreCase("True")
+                            || normalizedValue.equals("1")) {
+                        return true;
+                    }
+                }
             }
         }
 
-        Double average() {
-            if (count == 0) {
-                return null;
-            }
-
-            return round(sum / count);
-        }
-
-        Double max() {
-            if (max == null) {
-                return null;
-            }
-
-            return round(max);
-        }
-
-        private Double round(double value) {
-            return Math.round(value * 100.0) / 100.0;
-        }
+        return false;
     }
 }
