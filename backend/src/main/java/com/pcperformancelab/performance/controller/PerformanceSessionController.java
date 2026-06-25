@@ -2,15 +2,18 @@ package com.pcperformancelab.performance.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pcperformancelab.performance.dto.CreatePerformanceSessionRequest;
+import com.pcperformancelab.performance.importer.CapFrameXImportService;
 import com.pcperformancelab.performance.model.PerformanceSession;
+import com.pcperformancelab.performance.repository.PerformanceSessionRepository;
 import com.pcperformancelab.performance.service.PerformanceSessionService;
+import com.pcperformancelab.sensor.repository.SensorSummaryRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-import com.pcperformancelab.performance.importer.CapFrameXImportService;
 
 import java.io.IOException;
 import java.net.URI;
@@ -24,14 +27,20 @@ public class PerformanceSessionController {
 
     private final CapFrameXImportService capFrameXImportService;
     private final PerformanceSessionService performanceSessionService;
+    private final PerformanceSessionRepository performanceSessionRepository;
+    private final SensorSummaryRepository sensorSummaryRepository;
     private final ObjectMapper objectMapper;
 
     public PerformanceSessionController(
             PerformanceSessionService performanceSessionService,
+            PerformanceSessionRepository performanceSessionRepository,
+            SensorSummaryRepository sensorSummaryRepository,
             ObjectMapper objectMapper,
             CapFrameXImportService capFrameXImportService
     ) {
         this.performanceSessionService = performanceSessionService;
+        this.performanceSessionRepository = performanceSessionRepository;
+        this.sensorSummaryRepository = sensorSummaryRepository;
         this.objectMapper = objectMapper;
         this.capFrameXImportService = capFrameXImportService;
     }
@@ -101,6 +110,17 @@ public class PerformanceSessionController {
         return ResponseEntity
                 .created(URI.create("/api/sessions/" + createdSession.getId()))
                 .body(createdSession);
+    }
+
+    @DeleteMapping("/sessions/{id}")
+    @Transactional
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        PerformanceSession session = performanceSessionService.findById(id);
+
+        sensorSummaryRepository.deleteAllBySession_Id(id);
+        performanceSessionRepository.delete(session);
+
+        return ResponseEntity.noContent().build();
     }
 
     private CreatePerformanceSessionRequest readSessionRequest(MultipartFile file) {

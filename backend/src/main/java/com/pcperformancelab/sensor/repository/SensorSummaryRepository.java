@@ -9,6 +9,8 @@ public interface SensorSummaryRepository extends JpaRepository<SensorSummary, Lo
 
     List<SensorSummary> findAllBySession_Id(Long sessionId);
 
+    void deleteAllBySession_Id(Long sessionId);
+
     Optional<SensorSummary> findTopBySession_IdOrderByCreatedAtDesc(Long sessionId);
 
     Optional<SensorSummary> findTopByOrderByCreatedAtDesc();

@@ -10,6 +10,8 @@ public interface PerformanceSessionRepository extends JpaRepository<PerformanceS
 
     List<PerformanceSession> findAllBySnapshot_Id(Long snapshotId);
 
+    List<PerformanceSession> findAllBySnapshot_Build_Id(Long buildId);
+
     Optional<PerformanceSession> findTopByOrderByCreatedAtDesc();
 
     Optional<PerformanceSession> findFirstByAverageFpsIsNotNullOrderByAverageFpsDesc();
