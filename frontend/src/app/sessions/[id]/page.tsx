@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { buildApiUrl } from "@/lib/api";
+import { DeleteButton } from "@/components/delete-button";
 
 type PerformanceSession = {
   id: number;
@@ -236,6 +237,19 @@ function SessionHero({ session }: { session: PerformanceSession }) {
               Compare this run
             </NavButton>
             <NavButton href="/import">Import sensor data</NavButton>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <NavButton href={`/compare?s2=${session.id}`}>
+                Compare this run
+              </NavButton>
+              <NavButton href="/import">Import sensor data</NavButton>
+
+              <DeleteButton
+                endpoint={`/api/sessions/${session.id}`}
+                confirmMessage={`Delete run #${session.id}?`}
+                redirectTo="/sessions"
+                className="rounded-full border border-rose-900/70 bg-rose-950/20 px-5 py-3 text-sm font-medium text-rose-300 transition hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
           </div>
         </div>
 

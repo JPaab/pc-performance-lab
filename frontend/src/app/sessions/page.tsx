@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { buildApiUrl } from "@/lib/api";
+import { DeleteButton } from "@/components/delete-button";
 
 type PerformanceSession = {
   id: number;
@@ -269,17 +270,16 @@ function SessionCard({ session }: { session: PerformanceSession }) {
         <div className="flex flex-wrap gap-2 md:justify-end">
           <Link
             href={`/sessions/${session.id}`}
-            className="inline-flex justify-center rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition group-hover:border-violet-300 group-hover:text-violet-200"
+            className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full border border-violet-900/80 bg-violet-950/20 px-4 text-sm font-medium leading-5 text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
           >
             Open
           </Link>
 
-          <Link
-            href={`/compare?s2=${session.id}`}
-            className="inline-flex justify-center rounded-full border border-violet-900/80 bg-violet-950/20 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
-          >
-            Use as candidate
-          </Link>
+          <DeleteButton
+            endpoint={`/api/sessions/${session.id}`}
+            confirmMessage={`Delete run #${session.id}?`}
+            className="h-10 rounded-full border border-rose-900/70 bg-rose-950/20 px-4 text-rose-300 transition hover:border-rose-400 hover:bg-rose-950/30 hover:text-rose-200 disabled:opacity-50"
+          />
         </div>
       </div>
 
