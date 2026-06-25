@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
+import { CreateFormDisclosure } from "@/components/create-form-disclosure";
 import { buildApiUrl } from "@/lib/api";
 import { CreateSnapshotForm } from "./create-snapshot-form";
 
@@ -121,6 +122,7 @@ export default async function BuildSnapshotsPage({
 
             <section className="mt-8 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-8">
               <h1 className="text-3xl font-semibold">Build not found</h1>
+
               <p className="mt-3 text-zinc-500">
                 The backend did not return a PC build for this ID.
               </p>
@@ -130,8 +132,6 @@ export default async function BuildSnapshotsPage({
       </>
     );
   }
-
-  const latestSnapshot = snapshots[0] ?? null;
 
   return (
     <>
@@ -160,18 +160,12 @@ export default async function BuildSnapshotsPage({
             </p>
           </header>
 
-          <section className="mt-8 grid gap-6 lg:grid-cols-[390px_1fr] lg:items-start">
-            <div className="grid gap-6">
+          {snapshots.length === 0 ? (
+            <section className="mx-auto mt-8 max-w-4xl">
               <CreateSnapshotForm buildId={build.id} />
-
-              <SnapshotWorkflow
-                build={build}
-                latestSnapshot={latestSnapshot}
-                snapshotCount={snapshots.length}
-              />
-            </div>
-
-            <section id="hardware-snapshots">
+            </section>
+          ) : (
+            <section id="hardware-snapshots" className="mt-8">
               <div className="mb-5 flex flex-col gap-2 rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 p-5 md:flex-row md:items-end md:justify-between">
                 <div>
                   <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
@@ -189,188 +183,23 @@ export default async function BuildSnapshotsPage({
                 </p>
               </div>
 
-              {snapshots.length === 0 ? (
-                <EmptyState />
-              ) : (
-                <div className="grid gap-4">
-                  {snapshots.map((snapshot) => (
-                    <SnapshotCard key={snapshot.id} snapshot={snapshot} />
-                  ))}
-                </div>
-              )}
+              <div className="grid gap-4">
+                {snapshots.map((snapshot) => (
+                  <SnapshotCard key={snapshot.id} snapshot={snapshot} />
+                ))}
+              </div>
+
+              <CreateFormDisclosure
+                ariaLabel="Create new snapshot"
+                contentClassName="max-w-4xl"
+              >
+                <CreateSnapshotForm buildId={build.id} />
+              </CreateFormDisclosure>
             </section>
-          </section>
+          )}
         </div>
       </main>
     </>
-  );
-}
-
-function SnapshotWorkflow({
-  build,
-  latestSnapshot,
-  snapshotCount,
-}: {
-  build: PcBuild;
-  latestSnapshot: HardwareSnapshot | null;
-  snapshotCount: number;
-}) {
-  const hasSnapshot = Boolean(latestSnapshot);
-
-  return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-5 shadow-2xl shadow-black/25">
-      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-        Workflow
-      </p>
-
-      <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
-        State before run
-      </h2>
-
-      <p className="mt-2 text-sm leading-6 text-zinc-500">
-        Save the tuning state first. Then imports and comparisons make sense.
-      </p>
-
-      <div className="mt-5 grid gap-3">
-        <WorkflowStep
-          number="01"
-          title="Hardware ready"
-          text={build.name}
-          status="Done"
-          done
-          locked={false}
-          href="/builds"
-        />
-
-        <WorkflowStep
-          number="02"
-          title="Create tuning state"
-          text={
-            latestSnapshot
-              ? latestSnapshot.name
-              : "BIOS, OS, driver, RAM and tweak state"
-          }
-          status={hasSnapshot ? "Done" : "Start"}
-          done={hasSnapshot}
-          locked={false}
-          href={`/builds/${build.id}/snapshots`}
-        />
-
-        <WorkflowStep
-          number="03"
-          title="Import benchmark"
-          text={
-            hasSnapshot
-              ? "CapFrameX run + HWiNFO sensors"
-              : "Create a tuning state first"
-          }
-          status={hasSnapshot ? "Next" : "Locked"}
-          done={false}
-          locked={!hasSnapshot}
-          href={
-            latestSnapshot
-              ? `/import?snapshotId=${latestSnapshot.id}`
-              : `/builds/${build.id}/snapshots`
-          }
-        />
-
-        <WorkflowStep
-          number="04"
-          title="Compare decision"
-          text={
-            hasSnapshot
-              ? "After importing runs, decide what stays"
-              : "Benchmark import unlocks this step"
-          }
-          status={hasSnapshot ? "After run" : "Locked"}
-          done={false}
-          locked={!hasSnapshot}
-          href="/compare"
-        />
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-violet-950/70 bg-black/20 p-4">
-        <p className="text-xs uppercase tracking-[0.22em] text-zinc-700">
-          Current tuning states
-        </p>
-        <p className="mt-1 text-3xl font-black tracking-[-0.05em] text-zinc-50">
-          {snapshotCount}
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function WorkflowStep({
-  number,
-  title,
-  text,
-  status,
-  done,
-  locked,
-  href,
-}: {
-  number: string;
-  title: string;
-  text: string;
-  status: string;
-  done: boolean;
-  locked: boolean;
-  href: string;
-}) {
-  const content = (
-    <>
-      <div className="flex items-start justify-between gap-4">
-        <p
-          className={`font-mono text-sm ${
-            locked ? "text-zinc-700" : "text-violet-300"
-          }`}
-        >
-          {number}
-        </p>
-
-        <span
-          className={`rounded-full border px-3 py-1 text-xs font-medium ${
-            locked
-              ? "border-zinc-800 bg-black/20 text-zinc-700"
-              : done
-                ? "border-green-500/30 bg-green-500/10 text-green-300"
-                : "border-violet-950/80 bg-black/30 text-zinc-500"
-          }`}
-        >
-          {status}
-        </span>
-      </div>
-
-      <p
-        className={`mt-3 font-semibold ${
-          locked ? "text-zinc-700" : "text-zinc-100"
-        }`}
-      >
-        {title}
-      </p>
-
-      <p className="mt-1 line-clamp-2 text-sm leading-6 text-zinc-500">
-        {text}
-      </p>
-    </>
-  );
-
-  if (locked) {
-    return (
-      <article className="cursor-not-allowed rounded-2xl border border-violet-950/40 bg-black/15 p-4 opacity-70">
-        {content}
-      </article>
-    );
-  }
-
-  return (
-    <Link
-      href={href}
-      className="rounded-2xl border border-violet-950/70 bg-black/25 p-4 transition hover:border-violet-400/70"
-    >
-      {content}
-    </Link>
   );
 }
 
@@ -410,6 +239,7 @@ function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Chip label="Power" value={snapshot.powerPlan} />
+
         <Chip
           label="HAGS"
           value={
@@ -420,6 +250,7 @@ function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
                 : "Disabled"
           }
         />
+
         <Chip label="Driver" value={snapshot.gpuDriver} />
         <Chip label="BIOS" value={snapshot.biosVersion} />
         <Chip label="Timings" value={snapshot.ramTimings} />
@@ -475,6 +306,7 @@ function MainSpec({
       <p className="text-xs uppercase tracking-[0.2em] text-zinc-600">
         {label}
       </p>
+
       <p className="mt-2 truncate text-sm font-semibold text-zinc-100">
         {value ?? "—"}
       </p>
@@ -498,20 +330,5 @@ function Chip({
       <span className="text-zinc-700">{label}: </span>
       <span className="text-zinc-400">{value}</span>
     </span>
-  );
-}
-
-function EmptyState() {
-  return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-8">
-      <h2 className="text-2xl font-semibold text-zinc-50">
-        No tuning states yet
-      </h2>
-
-      <p className="mt-3 max-w-xl text-zinc-500">
-        Create the first snapshot. After that, importing a benchmark becomes the
-        next step.
-      </p>
-    </section>
   );
 }

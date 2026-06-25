@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
+import { CreateFormDisclosure } from "@/components/create-form-disclosure";
 import { buildApiUrl } from "@/lib/api";
 import { CreateBuildForm } from "./create-build-form";
 
@@ -55,7 +56,6 @@ function formatDateLabel(value: string | null | undefined) {
 
 export default async function BuildsPage() {
   const builds = await getBuilds();
-  const latestBuild = builds[0] ?? null;
 
   return (
     <>
@@ -78,16 +78,12 @@ export default async function BuildsPage() {
             </p>
           </header>
 
-          <section className="mt-8 grid gap-6 lg:grid-cols-[390px_1fr] lg:items-start">
-            <div className="grid gap-6">
+          {builds.length === 0 ? (
+            <section className="mx-auto mt-8 max-w-3xl">
               <CreateBuildForm />
-              <BuildWorkflow
-                latestBuild={latestBuild}
-                buildCount={builds.length}
-              />
-            </div>
-
-            <section>
+            </section>
+          ) : (
+            <section id="registered-machines" className="mt-8">
               <div className="mb-5 flex flex-col gap-2 rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 p-5 md:flex-row md:items-end md:justify-between">
                 <div>
                   <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
@@ -104,172 +100,23 @@ export default async function BuildsPage() {
                 </p>
               </div>
 
-              {builds.length === 0 ? (
-                <EmptyState />
-              ) : (
-                <div className="grid gap-4">
-                  {builds.map((build) => (
-                    <BuildCard key={build.id} build={build} />
-                  ))}
-                </div>
-              )}
+              <div className="grid gap-4">
+                {builds.map((build) => (
+                  <BuildCard key={build.id} build={build} />
+                ))}
+              </div>
+
+              <CreateFormDisclosure
+                ariaLabel="Create new build"
+                contentClassName="max-w-3xl"
+              >
+                <CreateBuildForm />
+              </CreateFormDisclosure>
             </section>
-          </section>
+          )}
         </div>
       </main>
     </>
-  );
-}
-
-function BuildWorkflow({
-  latestBuild,
-  buildCount,
-}: {
-  latestBuild: PcBuild | null;
-  buildCount: number;
-}) {
-  const hasBuild = Boolean(latestBuild);
-
-  return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-5 shadow-2xl shadow-black/25">
-      <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-        Workflow
-      </p>
-
-      <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em]">
-        Hardware first
-      </h2>
-
-      <p className="mt-2 text-sm leading-6 text-zinc-500">
-        Create the machine, then unlock snapshots and imports.
-      </p>
-
-      <div className="mt-5 grid gap-3">
-        <WorkflowStep
-          number="01"
-          title="Register hardware"
-          text={
-            hasBuild
-              ? (latestBuild?.name ?? "Hardware ready")
-              : "CPU, GPU, RAM and base platform"
-          }
-          status={hasBuild ? "Done" : "Start"}
-          done={hasBuild}
-          locked={false}
-          href="/builds"
-        />
-
-        <WorkflowStep
-          number="02"
-          title="Create tuning state"
-          text={
-            hasBuild
-              ? "BIOS, OS, driver and tweak state"
-              : "Register hardware first"
-          }
-          status={hasBuild ? "Next" : "Locked"}
-          done={false}
-          locked={!hasBuild}
-          href={latestBuild ? `/builds/${latestBuild.id}/snapshots` : "/builds"}
-        />
-
-        <WorkflowStep
-          number="03"
-          title="Import benchmark"
-          text={
-            hasBuild
-              ? "CapFrameX run + HWiNFO sensors"
-              : "Snapshots unlock this step"
-          }
-          status={hasBuild ? "After snapshot" : "Locked"}
-          done={false}
-          locked={!hasBuild}
-          href="/import"
-        />
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-violet-950/70 bg-black/20 p-4">
-        <p className="text-xs uppercase tracking-[0.22em] text-zinc-700">
-          Current hardware count
-        </p>
-        <p className="mt-1 text-3xl font-black tracking-[-0.05em] text-zinc-50">
-          {buildCount}
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function WorkflowStep({
-  number,
-  title,
-  text,
-  status,
-  done,
-  locked,
-  href,
-}: {
-  number: string;
-  title: string;
-  text: string;
-  status: string;
-  done: boolean;
-  locked: boolean;
-  href: string;
-}) {
-  const content = (
-    <>
-      <div className="flex items-start justify-between gap-4">
-        <p
-          className={`font-mono text-sm ${
-            locked ? "text-zinc-700" : "text-violet-300"
-          }`}
-        >
-          {number}
-        </p>
-
-        <span
-          className={`rounded-full border px-3 py-1 text-xs font-medium ${
-            locked
-              ? "border-zinc-800 bg-black/20 text-zinc-700"
-              : done
-                ? "border-green-500/30 bg-green-500/10 text-green-300"
-                : "border-violet-950/80 bg-black/30 text-zinc-500"
-          }`}
-        >
-          {status}
-        </span>
-      </div>
-
-      <p
-        className={`mt-3 font-semibold ${
-          locked ? "text-zinc-700" : "text-zinc-100"
-        }`}
-      >
-        {title}
-      </p>
-
-      <p className="mt-1 line-clamp-2 text-sm leading-6 text-zinc-500">
-        {text}
-      </p>
-    </>
-  );
-
-  if (locked) {
-    return (
-      <article className="cursor-not-allowed rounded-2xl border border-violet-950/40 bg-black/15 p-4 opacity-70">
-        {content}
-      </article>
-    );
-  }
-
-  return (
-    <Link
-      href={href}
-      className="rounded-2xl border border-violet-950/70 bg-black/25 p-4 transition hover:border-violet-400/70"
-    >
-      {content}
-    </Link>
   );
 }
 
@@ -328,6 +175,7 @@ function MainSpec({
       <p className="text-xs uppercase tracking-[0.2em] text-zinc-600">
         {label}
       </p>
+
       <p className="mt-2 truncate text-sm font-semibold text-zinc-100">
         {value ?? "—"}
       </p>
@@ -351,20 +199,5 @@ function Chip({
       <span className="text-zinc-700">{label}: </span>
       <span className="text-zinc-400">{value}</span>
     </span>
-  );
-}
-
-function EmptyState() {
-  return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-8">
-      <h2 className="text-2xl font-semibold text-zinc-50">
-        No builds registered
-      </h2>
-
-      <p className="mt-3 max-w-xl text-zinc-500">
-        Create the first hardware profile. After that, the next step is a tuning
-        snapshot for BIOS, OS, driver and tweak state.
-      </p>
-    </section>
   );
 }

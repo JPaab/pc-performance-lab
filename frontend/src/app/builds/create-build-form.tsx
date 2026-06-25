@@ -101,7 +101,7 @@ export function CreateBuildForm() {
   }
 
   return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/85 p-5 shadow-2xl shadow-black/30">
+    <section className="w-full rounded-3xl border border-violet-950/70 bg-[#0d0716]/85 p-6 shadow-2xl shadow-black/30">
       <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
         New hardware
       </p>
@@ -114,36 +114,42 @@ export function CreateBuildForm() {
         Fixed physical machine only. Tweaks go in snapshots.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
-        <TextInput
-          label="Build name"
-          value={form.name}
-          onChange={(value) => updateField("name", value)}
-          placeholder="Main 12700K / 3080 Ti"
-          required
-        />
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-5">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <TextInput
+              label="Build name"
+              value={form.name}
+              onChange={(value) => updateField("name", value)}
+              placeholder="Main 12700K / 3080 Ti"
+              required
+            />
+          </div>
 
-        <TextInput
-          label="CPU"
-          value={form.cpu}
-          onChange={(value) => updateField("cpu", value)}
-          placeholder="Intel Core i7-12700K"
-          required
-        />
+          <TextInput
+            label="CPU"
+            value={form.cpu}
+            onChange={(value) => updateField("cpu", value)}
+            placeholder="Intel Core i7-12700K"
+            required
+          />
 
-        <TextInput
-          label="GPU"
-          value={form.gpu}
-          onChange={(value) => updateField("gpu", value)}
-          placeholder="MSI RTX 3080 Ti Gaming X Trio"
-          required
-        />
+          <TextInput
+            label="GPU"
+            value={form.gpu}
+            onChange={(value) => updateField("gpu", value)}
+            placeholder="MSI RTX 3080 Ti Gaming X Trio"
+            required
+          />
 
-        <NumberInput
-          label="RAM GB"
-          value={form.ramGb}
-          onChange={(value) => updateField("ramGb", value)}
-        />
+          <div className="md:max-w-xs">
+            <NumberInput
+              label="RAM GB"
+              value={form.ramGb}
+              onChange={(value) => updateField("ramGb", value)}
+            />
+          </div>
+        </div>
 
         <details className="group rounded-2xl border border-violet-950/70 bg-black/25 p-4">
           <summary className="cursor-pointer list-none text-sm font-medium text-zinc-300 transition hover:text-violet-200">
@@ -154,7 +160,7 @@ export function CreateBuildForm() {
             </span>
           </summary>
 
-          <div className="mt-4 grid gap-4">
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
             <TextInput
               label="Motherboard"
               value={form.motherboard}
@@ -221,6 +227,7 @@ function FieldShell({
         {label}
         {required && <span className="text-violet-300"> *</span>}
       </span>
+
       {children}
     </label>
   );

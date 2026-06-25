@@ -128,7 +128,7 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
   }
 
   return (
-    <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/85 p-5 shadow-2xl shadow-black/30">
+    <section className="w-full rounded-3xl border border-violet-950/70 bg-[#0d0716]/85 p-6 shadow-2xl shadow-black/30">
       <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
         New state
       </p>
@@ -141,44 +141,46 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
         Save the exact tuning state before importing a run.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
-        <TextInput
-          label="Snapshot name"
-          value={form.name}
-          onChange={(value) => updateField("name", value)}
-          placeholder="AtlasOS + 5B Lite"
-          required
-        />
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-5">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <TextInput
+              label="Snapshot name"
+              value={form.name}
+              onChange={(value) => updateField("name", value)}
+              placeholder="AtlasOS + 5B Lite"
+              required
+            />
+          </div>
 
-        <TextInput
-          label="CPU state"
-          value={form.cpuOverclock}
-          onChange={(value) => updateField("cpuOverclock", value)}
-          placeholder="P48 / E38 / Ring42"
-        />
+          <TextInput
+            label="CPU state"
+            value={form.cpuOverclock}
+            onChange={(value) => updateField("cpuOverclock", value)}
+            placeholder="P48 / E38 / Ring42"
+          />
 
-        <TextInput
-          label="RAM profile"
-          value={form.ramProfile}
-          onChange={(value) => updateField("ramProfile", value)}
-          placeholder="DDR4 3600 Gear1 1N"
-        />
+          <TextInput
+            label="RAM profile"
+            value={form.ramProfile}
+            onChange={(value) => updateField("ramProfile", value)}
+            placeholder="DDR4 3600 Gear1 1N"
+          />
 
-        <TextInput
-          label="OS profile"
-          value={form.operatingSystemProfile}
-          onChange={(value) => updateField("operatingSystemProfile", value)}
-          placeholder="Windows 11 AtlasOS 25H2"
-        />
+          <TextInput
+            label="OS profile"
+            value={form.operatingSystemProfile}
+            onChange={(value) => updateField("operatingSystemProfile", value)}
+            placeholder="Windows 11 AtlasOS 25H2"
+          />
 
-        <TextInput
-          label="Power plan"
-          value={form.powerPlan}
-          onChange={(value) => updateField("powerPlan", value)}
-          placeholder="Atlas Performance"
-        />
+          <TextInput
+            label="Power plan"
+            value={form.powerPlan}
+            onChange={(value) => updateField("powerPlan", value)}
+            placeholder="Atlas Performance"
+          />
 
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
           <TextInput
             label="GPU driver"
             value={form.gpuDriver}
@@ -186,7 +188,7 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
             placeholder="596.36"
           />
 
-          <label className="flex min-w-0 items-center gap-3 rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3">
+          <label className="flex min-w-0 items-center gap-3 self-end rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3">
             <input
               type="checkbox"
               checked={form.hagsEnabled}
@@ -211,43 +213,41 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
             </span>
           </summary>
 
-          <div className="mt-4 grid gap-4">
-            <TextInput
-              label="RAM timings"
-              value={form.ramTimings}
-              onChange={(value) => updateField("ramTimings", value)}
-              placeholder="16-19-19-38"
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <TextInput
+                label="RAM timings"
+                value={form.ramTimings}
+                onChange={(value) => updateField("ramTimings", value)}
+                placeholder="16-19-19-38"
+              />
+            </div>
+
+            <NumberInput
+              label="tRFC"
+              value={form.trfc}
+              onChange={(value) => updateField("trfc", value)}
             />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <NumberInput
-                label="tRFC"
-                value={form.trfc}
-                onChange={(value) => updateField("trfc", value)}
-              />
+            <NumberInput
+              label="tREFI"
+              value={form.trefi}
+              onChange={(value) => updateField("trefi", value)}
+            />
 
-              <NumberInput
-                label="tREFI"
-                value={form.trefi}
-                onChange={(value) => updateField("trefi", value)}
-              />
-            </div>
+            <TextInput
+              label="Command rate"
+              value={form.commandRate}
+              onChange={(value) => updateField("commandRate", value)}
+              placeholder="1N"
+            />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextInput
-                label="Command rate"
-                value={form.commandRate}
-                onChange={(value) => updateField("commandRate", value)}
-                placeholder="1N"
-              />
-
-              <TextInput
-                label="Gear mode"
-                value={form.gearMode}
-                onChange={(value) => updateField("gearMode", value)}
-                placeholder="Gear 1"
-              />
-            </div>
+            <TextInput
+              label="Gear mode"
+              value={form.gearMode}
+              onChange={(value) => updateField("gearMode", value)}
+              placeholder="Gear 1"
+            />
 
             <TextInput
               label="BIOS version"
@@ -263,7 +263,7 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
               placeholder="ATLASOS, 5B_LITE, DEFENDER_ENABLED"
             />
 
-            <label className="grid min-w-0 gap-2">
+            <label className="grid min-w-0 gap-2 md:col-span-2">
               <span className="text-sm text-zinc-500">Notes</span>
 
               <textarea
@@ -313,6 +313,7 @@ function FieldShell({
         {label}
         {required && <span className="text-violet-300"> *</span>}
       </span>
+
       {children}
     </label>
   );
