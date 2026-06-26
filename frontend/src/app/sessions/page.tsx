@@ -93,6 +93,22 @@ function formatDuration(seconds: number | null | undefined) {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
+function formatSourceType(value: string) {
+  if (value === "CAPFRAMEX_JSON") {
+    return "CapFrameX";
+  }
+
+  if (value === "HWINFO_CSV") {
+    return "HWiNFO";
+  }
+
+  if (value === "MANUAL") {
+    return "Manual";
+  }
+
+  return value.replaceAll("_", " ");
+}
+
 function getToneClass(tone: Tone) {
   if (tone === "good") {
     return "text-green-300";
@@ -184,8 +200,8 @@ export default async function SessionsPage() {
               </h1>
 
               <p className="mt-4 max-w-2xl text-zinc-400">
-                Scan your captures by feel: average FPS, lows, frame pacing and
-                drop risk. Open the detail page only when a run deserves deeper
+                Scan every capture by average FPS, lows, pacing, drops and
+                sensor coverage. Open a run only when it deserves deeper
                 analysis.
               </p>
             </div>
@@ -239,6 +255,7 @@ function SessionCard({
   displayNumber: number;
 }) {
   const feel = getSessionFeel(session);
+  const sourceLabel = formatSourceType(session.sourceType);
 
   return (
     <article className="group min-w-0 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25 transition hover:border-violet-700/80">
@@ -252,7 +269,7 @@ function SessionCard({
             {session.gameName}
           </h2>
 
-          <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-500">
             {session.scenario ?? "No scenario"}
           </p>
 
@@ -263,7 +280,7 @@ function SessionCard({
 
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <span className="rounded-full border border-violet-900/80 bg-violet-950/30 px-3 py-1 text-xs font-medium text-violet-200">
-            {session.sourceType}
+            {sourceLabel}
           </span>
 
           <span
@@ -308,6 +325,13 @@ function SessionCard({
             Open
           </Link>
 
+          <Link
+            href={`/compare?s2=${session.id}`}
+            className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-full border border-violet-900/80 bg-violet-950/20 px-4 text-sm font-medium leading-5 text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
+          >
+            Compare
+          </Link>
+
           <DeleteButton
             endpoint={`/api/sessions/${session.id}`}
             confirmMessage={`Delete run #${displayNumber} (${session.gameName})?`}
@@ -339,7 +363,7 @@ function SessionCard({
         />
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid gap-3 sm:grid-cols-4">
         <SmallInfo
           label="Duration"
           value={formatDuration(session.durationSeconds)}
@@ -348,6 +372,11 @@ function SessionCard({
         <SmallInfo
           label="0.1% low"
           value={formatFps(session.zeroPointOnePercentLowFps)}
+        />
+
+        <SmallInfo
+          label="P99.9"
+          value={formatNumber(session.p999FrameTimeMs, " ms")}
         />
 
         <SmallInfo

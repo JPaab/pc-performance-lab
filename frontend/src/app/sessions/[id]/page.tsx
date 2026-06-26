@@ -170,6 +170,22 @@ function formatDuration(seconds: number | null | undefined) {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
+function formatSourceType(value: string) {
+  if (value === "CAPFRAMEX_JSON") {
+    return "CapFrameX";
+  }
+
+  if (value === "HWINFO_CSV") {
+    return "HWiNFO";
+  }
+
+  if (value === "MANUAL") {
+    return "Manual";
+  }
+
+  return value.replaceAll("_", " ");
+}
+
 function getDisplayNumberById(items: { id: number }[], id: number) {
   const index = items.findIndex((item) => item.id === id);
 
@@ -229,9 +245,9 @@ export default async function SessionDetailPage({
 
           <PerformancePanel session={session} />
 
-          <SensorSection sensorSummaries={sensorSummaries} />
-
           <SessionNotes session={session} sensorSummary={latestSensorSummary} />
+
+          <SensorSection sensorSummary={latestSensorSummary} />
         </div>
       </main>
     </>
@@ -269,7 +285,9 @@ function SessionHero({
           </h1>
 
           <p className="mt-5 max-w-3xl text-base leading-7 text-zinc-400">
-            {session.scenario ?? "No scenario"} · {session.sourceType}
+            {session.scenario ?? "No scenario"} ·{" "}
+            {formatSourceType(session.sourceType)} ·{" "}
+            {formatDuration(session.durationSeconds)}
           </p>
 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
@@ -282,7 +300,11 @@ function SessionHero({
               Compare this run
             </NavButton>
 
-            <NavButton href="/import">Import sensor data</NavButton>
+            <NavButton href="/import">
+              {session.hasSensorSummary
+                ? "Replace HWiNFO data"
+                : "Import sensor data"}
+            </NavButton>
 
             <DeleteButton
               endpoint={`/api/sessions/${session.id}`}
@@ -336,17 +358,17 @@ function PerformancePanel({ session }: { session: PerformanceSession }) {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-            Performance feel
+            Frame analysis
           </p>
 
           <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
-            How the run should feel
+            FPS, lows and pacing
           </h2>
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-zinc-500">
-          A simpler read of the frametime data: pacing, low-FPS stability and
-          hitch risk instead of raw numbers only.
+          CapFrameX metrics ordered for quick diagnosis: average FPS, lows, tail
+          frame times and visible hitch indicators.
         </p>
       </div>
 
@@ -378,7 +400,7 @@ function PerformancePanel({ session }: { session: PerformanceSession }) {
           Technical frame data
         </p>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="Average" value={formatFps(session.averageFps)} />
 
           <Metric label="1% low" value={formatFps(session.onePercentLowFps)} />
@@ -396,6 +418,20 @@ function PerformancePanel({ session }: { session: PerformanceSession }) {
           <Metric
             label="P99 frame time"
             value={formatNumber(session.p99FrameTimeMs, " ms")}
+          />
+
+          <Metric
+            label="P99.9 frame time"
+            value={formatNumber(session.p999FrameTimeMs, " ms")}
+          />
+
+          <Metric
+            label="Stutters"
+            value={
+              session.stutterCount === null || session.stutterCount === 0
+                ? "Clean"
+                : session.stutterCount
+            }
           />
 
           <Metric
@@ -449,7 +485,10 @@ function getFramePacingStatus(p99FrameTimeMs: number | null) {
   if (p99FrameTimeMs <= 10) {
     return {
       label: "Smooth",
-      detail: `P99 is ${formatNumber(p99FrameTimeMs, " ms")}, still solid for high refresh gaming.`,
+      detail: `P99 is ${formatNumber(
+        p99FrameTimeMs,
+        " ms",
+      )}, still solid for high refresh gaming.`,
       tone: "good" as const,
     };
   }
@@ -457,14 +496,20 @@ function getFramePacingStatus(p99FrameTimeMs: number | null) {
   if (p99FrameTimeMs <= 16.7) {
     return {
       label: "Watch spikes",
-      detail: `P99 is ${formatNumber(p99FrameTimeMs, " ms")}; the run may have visible pacing spikes.`,
+      detail: `P99 is ${formatNumber(
+        p99FrameTimeMs,
+        " ms",
+      )}; the run may have visible pacing spikes.`,
       tone: "warning" as const,
     };
   }
 
   return {
     label: "Rough pacing",
-    detail: `P99 is ${formatNumber(p99FrameTimeMs, " ms")}; this run likely has noticeable spikes.`,
+    detail: `P99 is ${formatNumber(
+      p99FrameTimeMs,
+      " ms",
+    )}; this run likely has noticeable spikes.`,
     tone: "bad" as const,
   };
 }
@@ -539,22 +584,67 @@ function getHitchRiskStatus(
   if ((p999FrameTimeMs ?? 0) <= 20) {
     return {
       label: "Minor spikes",
-      detail: `Worst-frame region sits around ${formatNumber(p999FrameTimeMs, " ms")}.`,
+      detail: `Worst-frame region sits around ${formatNumber(
+        p999FrameTimeMs,
+        " ms",
+      )}.`,
       tone: "warning" as const,
     };
   }
 
   return {
     label: "Spike risk",
-    detail: `P99.9 reaches ${formatNumber(p999FrameTimeMs, " ms")}; this may explain micro-hitches.`,
+    detail: `P99.9 reaches ${formatNumber(
+      p999FrameTimeMs,
+      " ms",
+    )}; this may explain micro-hitches.`,
     tone: "bad" as const,
   };
 }
 
-function SensorSection({
-  sensorSummaries,
+function SessionNotes({
+  session,
+  sensorSummary,
 }: {
-  sensorSummaries: SensorSummary[];
+  session: PerformanceSession;
+  sensorSummary: SensorSummary | null;
+}) {
+  const tags = session.tags ?? [];
+
+  return (
+    <section className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
+      <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6">
+        <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
+          Notes
+        </p>
+
+        <p className="mt-4 text-sm leading-7 text-zinc-500">
+          {session.notes ?? "No notes saved for this session."}
+        </p>
+
+        {tags.length > 0 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-violet-950/70 bg-black/25 px-3 py-1 text-xs text-violet-200/80"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <SensorHealthPanel sensorSummary={sensorSummary} />
+    </section>
+  );
+}
+
+function SensorSection({
+  sensorSummary,
+}: {
+  sensorSummary: SensorSummary | null;
 }) {
   return (
     <section className="mt-8 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
@@ -570,21 +660,26 @@ function SensorSection({
         </div>
 
         <p className="max-w-xl text-sm leading-6 text-zinc-500">
-          Curated sensor metrics for tuning: thermals, power, real clocks and
-          load behavior.
+          Latest sensor summary only. Thermals, power, clocks and load behavior
+          for this run.
         </p>
       </div>
 
-      {sensorSummaries.length === 0 ? (
+      {!sensorSummary ? (
         <p className="mt-6 rounded-2xl border border-violet-950/70 bg-black/25 p-5 text-sm text-zinc-500">
-          No HWiNFO sensor summary imported for this session yet.
+          No HWiNFO sensor summary imported for this run yet.
         </p>
       ) : (
-        <div className="mt-6 grid gap-5">
-          {sensorSummaries.map((summary) => (
-            <SensorSummaryCard key={summary.id} summary={summary} />
-          ))}
-        </div>
+        <>
+          <p className="mt-5 text-sm text-zinc-600">
+            {formatSourceType(sensorSummary.sourceType)} ·{" "}
+            {sensorSummary.sampleCount} samples
+          </p>
+
+          <div className="mt-6">
+            <SensorSummaryCard summary={sensorSummary} />
+          </div>
+        </>
       )}
     </section>
   );
@@ -758,30 +853,6 @@ function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
         </MetricSection>
       </HardwareDiagnosticsCard>
     </div>
-  );
-}
-
-function SessionNotes({
-  session,
-  sensorSummary,
-}: {
-  session: PerformanceSession;
-  sensorSummary: SensorSummary | null;
-}) {
-  return (
-    <section className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
-      <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6">
-        <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
-          Notes
-        </p>
-
-        <p className="mt-4 text-sm leading-7 text-zinc-500">
-          {session.notes ?? "No notes saved for this session."}
-        </p>
-      </section>
-
-      <SensorHealthPanel sensorSummary={sensorSummary} />
-    </section>
   );
 }
 
@@ -1198,7 +1269,7 @@ function HeroMetric({
   );
 }
 
-function NavButton({ href, children }: { href: string; children: string }) {
+function NavButton({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
