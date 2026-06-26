@@ -31,6 +31,9 @@ type SnapshotSummary = {
 type SessionSummary = {
   id: number;
   snapshotId: number;
+  snapshotName?: string;
+  buildId?: number;
+  buildName?: string;
   gameName: string;
   scenario: string | null;
   sourceType: string;
@@ -38,6 +41,7 @@ type SessionSummary = {
   onePercentLowFps: number | null;
   p99FrameTimeMs: number | null;
   stutterCount: number | null;
+  hasSensorSummary?: boolean;
   createdAt: string;
 };
 
@@ -91,6 +95,24 @@ async function getDashboardSummary(): Promise<DashboardSummary | null> {
   }
 }
 
+async function getSessions(): Promise<SessionSummary[]> {
+  try {
+    const response = await fetch(buildApiUrl("/api/sessions"), {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const sessions = (await response.json()) as SessionSummary[];
+
+    return sessions.sort((a, b) => b.id - a.id);
+  } catch {
+    return [];
+  }
+}
+
 function formatNumber(value: number | null | undefined, suffix = "") {
   if (value === null || value === undefined) {
     return "—";
@@ -115,6 +137,66 @@ function getDashboardCounts(summary: DashboardSummary): DashboardCounts {
     sensorSummaryCount:
       summary.counts?.sensorSummaryCount ?? summary.sensorSummaryCount ?? 0,
   };
+}
+
+function getBestSessionByAverage(sessions: SessionSummary[]) {
+  return sessions.reduce<SessionSummary | null>((best, session) => {
+    if (session.averageFps === null) {
+      return best;
+    }
+
+    if (!best || best.averageFps === null) {
+      return session;
+    }
+
+    return session.averageFps > best.averageFps ? session : best;
+  }, null);
+}
+
+function mergeDashboardWithSessions(
+  summary: DashboardSummary,
+  sessions: SessionSummary[],
+): DashboardSummary {
+  return {
+    ...summary,
+    latestSession: sessions[0] ?? summary.latestSession,
+    bestAverageFpsSession:
+      getBestSessionByAverage(sessions) ?? summary.bestAverageFpsSession,
+  };
+}
+
+function getSessionHardwareLine(session: SessionSummary | null) {
+  if (!session) {
+    return "";
+  }
+
+  const parts: string[] = [];
+
+  if (session.snapshotName) {
+    parts.push(session.snapshotName);
+  }
+
+  if (session.buildName) {
+    parts.push(session.buildName);
+  }
+
+  if (typeof session.hasSensorSummary === "boolean") {
+    parts.push(session.hasSensorSummary ? "HWiNFO" : "No sensors");
+  }
+
+  return parts.join(" · ");
+}
+
+function getLatestRunDetail(session: SessionSummary) {
+  const performanceLine = `${formatFps(session.averageFps)} avg · ${formatFps(
+    session.onePercentLowFps,
+  )} 1% low`;
+
+  const hardwareLine = getSessionHardwareLine(session);
+
+  return hardwareLine
+    ? `${performanceLine} · ${hardwareLine}`
+    : performanceLine;
 }
 
 function getToneClass(tone: Tone) {
@@ -150,7 +232,14 @@ function getToneBorderClass(tone: Tone) {
 }
 
 export default async function HomePage() {
-  const summary = await getDashboardSummary();
+  const [summary, sessions] = await Promise.all([
+    getDashboardSummary(),
+    getSessions(),
+  ]);
+
+  const dashboardSummary = summary
+    ? mergeDashboardWithSessions(summary, sessions)
+    : null;
 
   return (
     <>
@@ -158,16 +247,16 @@ export default async function HomePage() {
 
       <main className="min-h-screen px-6 py-10 text-zinc-100">
         <div className="mx-auto max-w-7xl">
-          {!summary ? (
+          {!dashboardSummary ? (
             <BackendUnavailable />
           ) : (
             <>
-              <Hero summary={summary} />
+              <Hero summary={dashboardSummary} />
               <Workflow
-                summary={summary}
-                counts={getDashboardCounts(summary)}
+                summary={dashboardSummary}
+                counts={getDashboardCounts(dashboardSummary)}
               />
-              <RunHighlights summary={summary} />
+              <RunHighlights summary={dashboardSummary} />
             </>
           )}
         </div>
@@ -210,6 +299,8 @@ function Hero({ summary }: { summary: DashboardSummary }) {
 }
 
 function BestOverallHero({ session }: { session: SessionSummary | null }) {
+  const hardwareLine = getSessionHardwareLine(session);
+
   return (
     <div className="min-w-0 border-t border-violet-950/70 bg-black/25 p-8 md:p-10 lg:border-l lg:border-t-0">
       <div className="flex items-start justify-between gap-5">
@@ -247,6 +338,12 @@ function BestOverallHero({ session }: { session: SessionSummary | null }) {
             <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
               {session.scenario ?? "No scenario"} · Session #{session.id}
             </p>
+
+            {hardwareLine && (
+              <p className="mt-2 line-clamp-1 text-sm text-zinc-600">
+                {hardwareLine}
+              </p>
+            )}
           </div>
 
           <div className="mt-7">
@@ -354,9 +451,10 @@ function Workflow({
             !hasSnapshot
               ? "Create a tuning state first"
               : summary.latestSession
-                ? `${summary.latestSession.gameName} · ${formatFps(
-                    summary.latestSession.averageFps,
-                  )}`
+                ? `${summary.latestSession.gameName} · ${
+                    summary.latestSession.snapshotName ??
+                    formatFps(summary.latestSession.averageFps)
+                  }`
                 : "Import CapFrameX and attach HWiNFO"
           }
           status={!hasSnapshot ? "Locked" : hasSession ? "Done" : "Next"}
@@ -480,6 +578,7 @@ function RunHighlights({ summary }: { summary: DashboardSummary }) {
 
 function LatestRunFeel({ session }: { session: SessionSummary | null }) {
   const latestFeel = session ? getRunFeel(session) : null;
+  const hardwareLine = getSessionHardwareLine(session);
 
   return (
     <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
@@ -514,6 +613,12 @@ function LatestRunFeel({ session }: { session: SessionSummary | null }) {
             <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
               {session.scenario ?? "No scenario"} · Session #{session.id}
             </p>
+
+            {hardwareLine && (
+              <p className="mt-2 line-clamp-1 text-sm text-zinc-600">
+                {hardwareLine}
+              </p>
+            )}
           </div>
 
           <div className="mt-6 grid gap-3">
@@ -597,9 +702,7 @@ function LatestInfo({ summary }: { summary: DashboardSummary }) {
           }
           detail={
             summary.latestSession
-              ? `${formatFps(summary.latestSession.averageFps)} avg · ${formatFps(
-                  summary.latestSession.onePercentLowFps,
-                )} 1% low`
+              ? getLatestRunDetail(summary.latestSession)
               : "Import CapFrameX first"
           }
           href={
