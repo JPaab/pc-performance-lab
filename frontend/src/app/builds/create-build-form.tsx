@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { postJson } from "@/lib/api";
+import { buildApiUrl, postJson } from "@/lib/api";
 
 type CreateBuildRequest = {
   name: string;
@@ -15,6 +15,19 @@ type CreateBuildRequest = {
   monitor: string;
   operatingSystem: string;
   gpuDriver: string;
+};
+
+type DetectedHardwareResponse = {
+  name: string | null;
+  cpu: string | null;
+  gpu: string | null;
+  ramGb: number | null;
+  motherboard: string | null;
+  storage: string | null;
+  monitor: string | null;
+  operatingSystem: string | null;
+  gpuDriver: string | null;
+  biosVersion: string | null;
 };
 
 type PcBuild = CreateBuildRequest & {
@@ -48,6 +61,10 @@ export function CreateBuildForm() {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDetectingHardware, setIsDetectingHardware] = useState(false);
+  const [detectedBiosVersion, setDetectedBiosVersion] = useState<string | null>(
+    null,
+  );
 
   function updateField(
     field: keyof CreateBuildRequest,
@@ -57,6 +74,59 @@ export function CreateBuildForm() {
       ...currentForm,
       [field]: value,
     }));
+  }
+
+  async function handleDetectHardware() {
+    try {
+      setIsDetectingHardware(true);
+      setStatus({
+        tone: "idle",
+        message: "Detecting local hardware...",
+      });
+
+      const response = await fetch(buildApiUrl("/api/hardware/local"), {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not detect local hardware.");
+      }
+
+      const detectedHardware =
+        (await response.json()) as DetectedHardwareResponse;
+
+      setForm((currentForm) => ({
+        ...currentForm,
+        name: detectedHardware.name ?? currentForm.name,
+        cpu: detectedHardware.cpu ?? currentForm.cpu,
+        gpu: detectedHardware.gpu ?? currentForm.gpu,
+        ramGb: detectedHardware.ramGb ?? currentForm.ramGb,
+        motherboard: detectedHardware.motherboard ?? currentForm.motherboard,
+        storage: detectedHardware.storage ?? currentForm.storage,
+        monitor: detectedHardware.monitor ?? currentForm.monitor,
+        operatingSystem:
+          detectedHardware.operatingSystem ?? currentForm.operatingSystem,
+        gpuDriver: "",
+      }));
+
+      setDetectedBiosVersion(detectedHardware.biosVersion);
+
+      setStatus({
+        tone: "success",
+        message:
+          "Hardware detected. Add a build name and review before saving.",
+      });
+    } catch (error) {
+      setStatus({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Could not detect local hardware.",
+      });
+    } finally {
+      setIsDetectingHardware(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -77,17 +147,15 @@ export function CreateBuildForm() {
         message: "Creating hardware profile...",
       });
 
-      const createdBuild = await postJson<PcBuild, CreateBuildRequest>(
-        "/api/builds",
-        form,
-      );
+      await postJson<PcBuild, CreateBuildRequest>("/api/builds", form);
 
       setStatus({
         tone: "success",
-        message: `Build #${createdBuild.id} created. Tuning state unlocked.`,
+        message: "Hardware profile created. Tuning state unlocked.",
       });
 
       setForm(initialForm);
+      setDetectedBiosVersion(null);
       router.refresh();
     } catch (error) {
       setStatus({
@@ -113,6 +181,40 @@ export function CreateBuildForm() {
       <p className="mt-2 text-sm leading-6 text-zinc-500">
         Fixed physical machine only. Tweaks go in snapshots.
       </p>
+
+      <div className="mt-5 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-medium text-zinc-200">
+              Detect this PC automatically
+            </p>
+
+            <p className="mt-1 text-sm leading-6 text-zinc-600">
+              Pull CPU, GPU, RAM, motherboard, storage, monitor and OS from the
+              local backend.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleDetectHardware}
+            disabled={isDetectingHardware || isSubmitting}
+            className="shrink-0 rounded-full border border-violet-900/80 bg-violet-950/20 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isDetectingHardware ? "Detecting..." : "Detect local PC"}
+          </button>
+        </div>
+      </div>
+
+      {detectedBiosVersion && (
+        <p className="mt-4 rounded-2xl border border-violet-950/70 bg-black/25 p-4 text-sm text-zinc-500">
+          Detected BIOS version:{" "}
+          <span className="font-medium text-violet-200">
+            {detectedBiosVersion}
+          </span>
+          . Save this later in the tuning state.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-6 grid gap-5">
         <div className="grid gap-4 md:grid-cols-2">
@@ -193,7 +295,7 @@ export function CreateBuildForm() {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isDetectingHardware}
           className="rounded-2xl bg-violet-300 px-6 py-3 font-semibold text-black transition hover:bg-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? "Creating..." : "Create hardware profile"}
