@@ -231,25 +231,18 @@ function SessionHero({ session }: { session: PerformanceSession }) {
           <p className="mt-5 max-w-3xl text-base leading-7 text-zinc-400">
             {session.scenario ?? "No scenario"} · {session.sourceType}
           </p>
-
           <div className="mt-8 flex flex-wrap gap-3">
             <NavButton href={`/compare?s2=${session.id}`}>
               Compare this run
             </NavButton>
             <NavButton href="/import">Import sensor data</NavButton>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <NavButton href={`/compare?s2=${session.id}`}>
-                Compare this run
-              </NavButton>
-              <NavButton href="/import">Import sensor data</NavButton>
 
-              <DeleteButton
-                endpoint={`/api/sessions/${session.id}`}
-                confirmMessage={`Delete run #${session.id}?`}
-                redirectTo="/sessions"
-                className="rounded-full border border-rose-900/70 bg-rose-950/20 px-5 py-3 text-sm font-medium text-rose-300 transition hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </div>
+            <DeleteButton
+              endpoint={`/api/sessions/${session.id}`}
+              confirmMessage={`Delete run #${session.id}?`}
+              redirectTo="/sessions"
+              className="rounded-full border border-rose-900/70 bg-rose-950/20 px-5 py-3 text-sm font-medium text-rose-300 transition hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+            />
           </div>
         </div>
 
