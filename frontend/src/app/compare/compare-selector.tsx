@@ -1,20 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
-type HardwareSnapshot = {
-  id: number;
-  buildId: number;
-  name: string;
-  operatingSystemProfile: string | null;
-  powerPlan: string | null;
-  hagsEnabled: boolean | null;
-  gpuDriver: string | null;
-};
+import { useState } from "react";
 
 type PerformanceSession = {
   id: number;
   snapshotId: number;
+  snapshotName: string;
+  buildId: number;
+  buildName: string;
   gameName: string;
   scenario: string | null;
   sourceType: string;
@@ -24,24 +17,19 @@ type PerformanceSession = {
   p99FrameTimeMs: number | null;
   stutterCount: number | null;
   droppedFrames: number | null;
+  hasSensorSummary: boolean;
   createdAt: string;
 };
 
 export function CompareSelector({
   sessions,
-  snapshots,
   baselineId,
   comparisonId,
 }: {
   sessions: PerformanceSession[];
-  snapshots: HardwareSnapshot[];
   baselineId?: string;
   comparisonId?: string;
 }) {
-  const snapshotNameById = useMemo(() => {
-    return new Map(snapshots.map((snapshot) => [snapshot.id, snapshot.name]));
-  }, [snapshots]);
-
   const [selectedBaselineId, setSelectedBaselineId] = useState(
     baselineId && baselineId !== comparisonId ? baselineId : "",
   );
@@ -81,7 +69,6 @@ export function CompareSelector({
           label="Baseline"
           name="s1"
           sessions={baselineOptions}
-          snapshotNameById={snapshotNameById}
           value={selectedBaselineId}
           onChange={setSelectedBaselineId}
         />
@@ -90,7 +77,6 @@ export function CompareSelector({
           label="Candidate"
           name="s2"
           sessions={comparisonOptions}
-          snapshotNameById={snapshotNameById}
           value={selectedComparisonId}
           onChange={setSelectedComparisonId}
         />
@@ -113,14 +99,12 @@ function SessionSelect({
   label,
   name,
   sessions,
-  snapshotNameById,
   value,
   onChange,
 }: {
   label: string;
   name: string;
   sessions: PerformanceSession[];
-  snapshotNameById: Map<number, string>;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -139,7 +123,7 @@ function SessionSelect({
 
         {sessions.map((session) => (
           <option key={session.id} value={session.id}>
-            {getSessionOptionLabel(session, snapshotNameById)}
+            {getSessionOptionLabel(session)}
           </option>
         ))}
       </select>
@@ -147,22 +131,8 @@ function SessionSelect({
   );
 }
 
-function getSnapshotName(
-  snapshotNameById: Map<number, string>,
-  snapshotId: number | null | undefined,
-) {
-  if (!snapshotId) {
-    return "Unknown snapshot";
-  }
-
-  return snapshotNameById.get(snapshotId) ?? `Snapshot #${snapshotId}`;
-}
-
-function getSessionOptionLabel(
-  session: PerformanceSession,
-  snapshotNameById: Map<number, string>,
-) {
-  return `${getSnapshotName(snapshotNameById, session.snapshotId)} · ${
+function getSessionOptionLabel(session: PerformanceSession) {
+  return `#${session.id} · ${session.snapshotName} · ${session.buildName} · ${
     session.gameName
-  }`;
+  } · ${session.hasSensorSummary ? "HWiNFO" : "No sensors"}`;
 }

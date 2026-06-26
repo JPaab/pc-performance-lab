@@ -3,19 +3,12 @@ import { AppHeader } from "@/components/app-header";
 import { buildApiUrl } from "@/lib/api";
 import { CompareSelector } from "./compare-selector";
 
-type HardwareSnapshot = {
-  id: number;
-  buildId: number;
-  name: string;
-  operatingSystemProfile: string | null;
-  powerPlan: string | null;
-  hagsEnabled: boolean | null;
-  gpuDriver: string | null;
-};
-
 type PerformanceSession = {
   id: number;
   snapshotId: number;
+  snapshotName: string;
+  buildId: number;
+  buildName: string;
   gameName: string;
   scenario: string | null;
   sourceType: string;
@@ -25,6 +18,7 @@ type PerformanceSession = {
   p99FrameTimeMs: number | null;
   stutterCount: number | null;
   droppedFrames: number | null;
+  hasSensorSummary: boolean;
   createdAt: string;
 };
 
@@ -70,24 +64,6 @@ async function getSessions(): Promise<PerformanceSession[]> {
     const sessions = (await response.json()) as PerformanceSession[];
 
     return sessions.sort((a, b) => b.id - a.id);
-  } catch {
-    return [];
-  }
-}
-
-async function getSnapshots(): Promise<HardwareSnapshot[]> {
-  try {
-    const response = await fetch(buildApiUrl("/api/snapshots"), {
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      return [];
-    }
-
-    const snapshots = (await response.json()) as HardwareSnapshot[];
-
-    return snapshots.sort((a, b) => b.id - a.id);
   } catch {
     return [];
   }
@@ -350,9 +326,8 @@ export default async function ComparePage({
 }) {
   const params = await searchParams;
 
-  const [sessions, snapshots, comparison] = await Promise.all([
+  const [sessions, comparison] = await Promise.all([
     getSessions(),
-    getSnapshots(),
     getComparison(params.s1, params.s2),
   ]);
 
@@ -389,7 +364,6 @@ export default async function ComparePage({
 
           <CompareSelector
             sessions={sessions}
-            snapshots={snapshots}
             baselineId={params.s1}
             comparisonId={params.s2}
           />
@@ -509,7 +483,27 @@ function RunSummaryCard({
             {title}
           </h3>
 
-          <p className="mt-2 text-sm text-zinc-500">Session #{sessionId}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="text-sm text-zinc-500">Session #{sessionId}</p>
+
+            {session && (
+              <span
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                  session.hasSensorSummary
+                    ? "border-green-500/30 bg-green-500/10 text-green-300"
+                    : "border-violet-950/80 bg-black/20 text-zinc-600"
+                }`}
+              >
+                {session.hasSensorSummary ? "HWiNFO" : "No sensors"}
+              </span>
+            )}
+          </div>
+
+          {session && (
+            <p className="mt-2 truncate text-sm text-zinc-600">
+              {session.snapshotName} · {session.buildName}
+            </p>
+          )}
         </div>
 
         <Link
@@ -522,10 +516,12 @@ function RunSummaryCard({
 
       <div className="mt-5 grid gap-3">
         <RunMetric label="Average" value={formatFps(session?.averageFps)} />
+
         <RunMetric
           label="1% Low"
           value={formatFps(session?.onePercentLowFps)}
         />
+
         <RunMetric
           label="P99"
           value={formatNumber(session?.p99FrameTimeMs, " ms")}
@@ -862,6 +858,11 @@ function EmptyComparison({ sessions }: { sessions: PerformanceSession[] }) {
 
               <p className="mt-1 line-clamp-1 text-sm text-zinc-500">
                 {session.scenario ?? "No scenario"}
+              </p>
+
+              <p className="mt-2 line-clamp-1 text-sm text-zinc-600">
+                {session.snapshotName} · {session.buildName} ·{" "}
+                {session.hasSensorSummary ? "HWiNFO" : "No sensors"}
               </p>
             </Link>
           ))}
