@@ -7,6 +7,9 @@ import { DeleteButton } from "@/components/delete-button";
 type PerformanceSession = {
   id: number;
   snapshotId: number;
+  snapshotName: string;
+  buildId: number;
+  buildName: string;
   gameName: string;
   scenario: string | null;
   sourceType: string;
@@ -19,6 +22,7 @@ type PerformanceSession = {
   p999FrameTimeMs: number | null;
   stutterCount: number | null;
   droppedFrames: number | null;
+  hasSensorSummary: boolean;
   tags: string[];
   notes: string | null;
   createdAt: string;
@@ -171,6 +175,7 @@ export default async function SessionDetailPage({
 
             <section className="mt-8 rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-8">
               <h1 className="text-3xl font-semibold">Session not found</h1>
+
               <p className="mt-3 text-zinc-500">
                 The backend did not return a performance session for this ID.
               </p>
@@ -231,10 +236,17 @@ function SessionHero({ session }: { session: PerformanceSession }) {
           <p className="mt-5 max-w-3xl text-base leading-7 text-zinc-400">
             {session.scenario ?? "No scenario"} · {session.sourceType}
           </p>
+
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+            {session.snapshotName} · {session.buildName} ·{" "}
+            {session.hasSensorSummary ? "HWiNFO" : "No sensors"}
+          </p>
+
           <div className="mt-8 flex flex-wrap gap-3">
             <NavButton href={`/compare?s2=${session.id}`}>
               Compare this run
             </NavButton>
+
             <NavButton href="/import">Import sensor data</NavButton>
 
             <DeleteButton
@@ -260,10 +272,12 @@ function SessionHero({ session }: { session: PerformanceSession }) {
               label="1% low"
               value={formatFps(session.onePercentLowFps)}
             />
+
             <HeroMetric
               label="P99"
               value={formatNumber(session.p99FrameTimeMs, " ms")}
             />
+
             <HeroMetric
               label="Drops"
               value={
@@ -331,19 +345,24 @@ function PerformancePanel({ session }: { session: PerformanceSession }) {
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <Metric label="Average" value={formatFps(session.averageFps)} />
+
           <Metric label="1% low" value={formatFps(session.onePercentLowFps)} />
+
           <Metric
             label="0.1% low"
             value={formatFps(session.zeroPointOnePercentLowFps)}
           />
+
           <Metric
             label="P95 frame time"
             value={formatNumber(session.p95FrameTimeMs, " ms")}
           />
+
           <Metric
             label="P99 frame time"
             value={formatNumber(session.p99FrameTimeMs, " ms")}
           />
+
           <Metric
             label="Dropped frames"
             value={
@@ -361,10 +380,12 @@ function PerformancePanel({ session }: { session: PerformanceSession }) {
 function getPerformanceFeel(session: PerformanceSession) {
   return {
     framePacing: getFramePacingStatus(session.p99FrameTimeMs),
+
     lowStability: getLowStabilityStatus(
       session.averageFps,
       session.onePercentLowFps,
     ),
+
     hitchRisk: getHitchRiskStatus(
       session.p999FrameTimeMs,
       session.droppedFrames,
@@ -547,11 +568,13 @@ function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
             value={formatNumber(summary.cpuPackageTempMax, " °C")}
             importance="primary"
           />
+
           <SensorMetric
             label="Core max"
             value={formatNumber(summary.cpuCoreMaxTempMax, " °C")}
             importance="primary"
           />
+
           <SensorMetric
             label="Package avg"
             value={formatNumber(summary.cpuPackageTempAvg, " °C")}
@@ -564,6 +587,7 @@ function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
             value={formatNumber(summary.cpuPackagePowerAvg, " W")}
             importance="primary"
           />
+
           <SensorMetric
             label="Package power max"
             value={formatNumber(summary.cpuPackagePowerMax, " W")}
@@ -576,23 +600,28 @@ function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
             value={formatNumber(summary.cpuPcoreClockAvg, " MHz")}
             importance="primary"
           />
+
           <SensorMetric
             label="P-core clock max"
             value={formatNumber(summary.cpuPcoreClockMax, " MHz")}
           />
+
           <SensorMetric
             label="E-core clock avg"
             value={formatNumber(summary.cpuEcoreClockAvg, " MHz")}
           />
+
           <SensorMetric
             label="Ring clock avg"
             value={formatNumber(summary.cpuRingClockAvg, " MHz")}
           />
+
           <SensorMetric
             label="Effective avg"
             value={formatNumber(summary.cpuAverageEffectiveClockAvg, " MHz")}
             hint="Load-weighted. It can look low because idle and lightly loaded cores are included."
           />
+
           <SensorMetric
             label="CPU usage avg"
             value={formatNumber(summary.totalCpuUsageAvg, " %")}
@@ -610,15 +639,18 @@ function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
             value={formatNumber(summary.gpuTemperatureMax, " °C")}
             importance="primary"
           />
+
           <SensorMetric
             label="Hotspot max"
             value={formatNumber(summary.gpuHotSpotTemperatureMax, " °C")}
             importance="primary"
           />
+
           <SensorMetric
             label="Memory junction max"
             value={formatNumber(summary.gpuMemoryJunctionTemperatureMax, " °C")}
           />
+
           <SensorMetric
             label="GPU temp avg"
             value={formatNumber(summary.gpuTemperatureAvg, " °C")}
@@ -631,6 +663,7 @@ function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
             value={formatNumber(summary.gpuPowerAvg, " W")}
             importance="primary"
           />
+
           <SensorMetric
             label="GPU power max"
             value={formatNumber(summary.gpuPowerMax, " W")}
@@ -643,23 +676,28 @@ function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
             value={formatNumber(summary.gpuEffectiveClockAvg, " MHz")}
             importance="primary"
           />
+
           <SensorMetric
             label="Effective clock max"
             value={formatNumber(summary.gpuEffectiveClockMax, " MHz")}
           />
+
           <SensorMetric
             label="Core clock avg"
             value={formatNumber(summary.gpuClockAvg, " MHz")}
           />
+
           <SensorMetric
             label="Memory clock avg"
             value={formatNumber(summary.gpuMemoryClockAvg, " MHz")}
           />
+
           <SensorMetric
             label="GPU load avg"
             value={formatNumber(summary.gpuCoreLoadAvg, " %")}
             importance="primary"
           />
+
           <SensorMetric
             label="GPU load max"
             value={formatNumber(summary.gpuCoreLoadMax, " %")}
@@ -677,6 +715,7 @@ function SensorSummaryCard({ summary }: { summary: SensorSummary }) {
             value={formatNumber(summary.physicalMemoryLoadAvg, " %")}
             importance="primary"
           />
+
           <SensorMetric
             label="RAM load max"
             value={formatNumber(summary.physicalMemoryLoadMax, " %")}
@@ -879,6 +918,7 @@ function getSensorHealthVerdict(summary: SensorSummary) {
       hasGpuBoostLimit,
       hasGpuUtilizationLimit,
     }),
+
     gpuTone: getGpuTone({
       hasGpuThermalLimit: summary.gpuThermalLimitDetected,
       hasGpuBoostLimit,
@@ -974,6 +1014,7 @@ function HardwareDiagnosticsCard({
     <section className="rounded-3xl border border-violet-950/70 bg-black/20 p-5">
       <div>
         <p className="text-lg font-semibold text-zinc-100">{title}</p>
+
         <p className="mt-1 text-sm leading-6 text-zinc-500">{description}</p>
       </div>
 
@@ -1015,6 +1056,7 @@ function SensorMetric({
     <div className="min-w-0 border-b border-violet-950/60 pb-3 last:border-b-0">
       <div className="flex min-w-0 items-center justify-between gap-4">
         <p className="text-sm text-zinc-500">{label}</p>
+
         <p
           className={`truncate text-right text-sm font-semibold ${
             importance === "primary" ? "text-violet-200" : "text-zinc-100"
@@ -1097,6 +1139,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
       <p className="text-xs text-zinc-600">{label}</p>
+
       <p className="mt-1 truncate text-lg font-semibold text-zinc-100">
         {value}
       </p>
@@ -1114,6 +1157,7 @@ function HeroMetric({
   return (
     <div className="min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
       <p className="text-xs text-zinc-600">{label}</p>
+
       <p className="mt-1 truncate text-2xl font-bold text-zinc-100">{value}</p>
     </div>
   );
