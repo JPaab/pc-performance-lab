@@ -23,11 +23,15 @@ type HardwareSnapshot = {
 type PerformanceSession = {
   id: number;
   snapshotId: number;
+  snapshotName: string;
+  buildId: number;
+  buildName: string;
   gameName: string;
   scenario: string | null;
   sourceType: string;
   averageFps: number | null;
   p99FrameTimeMs: number | null;
+  hasSensorSummary: boolean;
   createdAt: string;
 };
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
 import { buildApiUrl } from "@/lib/api";
+import { DashboardBestOverallCard } from "@/components/dashboard-best-overall-card";
 
 type DashboardCounts = {
   buildCount: number;
@@ -267,7 +268,7 @@ export default async function HomePage() {
 
 function Hero({ summary }: { summary: DashboardSummary }) {
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-violet-950/70 bg-[#0d0716]/80 shadow-2xl shadow-black/30">
+    <section className="relative overflow-visible rounded-[2rem] border border-violet-950/70 bg-[#0d0716]/80 shadow-2xl shadow-black/30">
       <div className="grid lg:grid-cols-[1.12fr_0.88fr]">
         <div className="min-w-0 p-8 md:p-10">
           <p className="text-sm font-medium uppercase tracking-[0.32em] text-violet-300">
@@ -287,89 +288,13 @@ function Hero({ summary }: { summary: DashboardSummary }) {
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <PrimaryLink href="/import">Import benchmark</PrimaryLink>
             <SecondaryLink href="/sessions">View runs</SecondaryLink>
           </div>
         </div>
 
-        <BestOverallHero session={summary.bestAverageFpsSession} />
+        <DashboardBestOverallCard session={summary.bestAverageFpsSession} />
       </div>
     </section>
-  );
-}
-
-function BestOverallHero({ session }: { session: SessionSummary | null }) {
-  const hardwareLine = getSessionHardwareLine(session);
-
-  return (
-    <div className="min-w-0 border-t border-violet-950/70 bg-black/25 p-8 md:p-10 lg:border-l lg:border-t-0">
-      <div className="flex items-start justify-between gap-5">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.28em] text-zinc-600">
-            Best overall run
-          </p>
-
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-zinc-50">
-            Current winner
-          </h2>
-        </div>
-
-        {session && (
-          <Link
-            href={`/sessions/${session.id}`}
-            className="shrink-0 rounded-full border border-violet-900/80 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200"
-          >
-            Open
-          </Link>
-        )}
-      </div>
-
-      {!session ? (
-        <p className="mt-6 text-sm text-zinc-500">
-          No benchmark run with FPS data yet.
-        </p>
-      ) : (
-        <>
-          <div className="mt-6">
-            <p className="truncate text-2xl font-semibold text-zinc-50">
-              {session.gameName}
-            </p>
-
-            <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
-              {session.scenario ?? "No scenario"} · Session #{session.id}
-            </p>
-
-            {hardwareLine && (
-              <p className="mt-2 line-clamp-1 text-sm text-zinc-600">
-                {hardwareLine}
-              </p>
-            )}
-          </div>
-
-          <div className="mt-7">
-            <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
-              average fps
-            </p>
-
-            <p className="mt-1 text-6xl font-black tracking-[-0.06em] text-violet-300">
-              {formatNumber(session.averageFps)}
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <MiniInfo
-              label="1% low"
-              value={formatFps(session.onePercentLowFps)}
-            />
-            <MiniInfo
-              label="P99"
-              value={formatNumber(session.p99FrameTimeMs, " ms")}
-            />
-            <MiniInfo label="Stutters" value={session.stutterCount ?? "—"} />
-          </div>
-        </>
-      )}
-    </div>
   );
 }
 
@@ -767,17 +692,6 @@ function LatestInfoRow({
   );
 }
 
-function MiniInfo({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
-      <p className="text-xs text-zinc-600">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold text-zinc-100">
-        {value}
-      </p>
-    </div>
-  );
-}
-
 function getRunFeel(session: SessionSummary) {
   return {
     pacing: getFramePacingStatus(session.p99FrameTimeMs),
@@ -914,17 +828,6 @@ function HeroFeelRow({
   );
 }
 
-function PrimaryLink({ href, children }: { href: string; children: string }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-full bg-violet-300 px-5 py-3 text-sm font-semibold text-black transition hover:bg-violet-200"
-    >
-      {children}
-    </Link>
-  );
-}
-
 function SecondaryLink({ href, children }: { href: string; children: string }) {
   return (
     <Link
@@ -942,9 +845,6 @@ function BackendUnavailable() {
       <h2 className="text-2xl font-semibold text-red-200">
         Backend unavailable
       </h2>
-      <p className="mt-3 text-red-100/70">
-        Start the Spring Boot backend and refresh this page.
-      </p>
     </section>
   );
 }

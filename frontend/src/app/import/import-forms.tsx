@@ -27,11 +27,15 @@ type HardwareSnapshot = {
 type PerformanceSession = {
   id: number;
   snapshotId: number;
+  snapshotName: string;
+  buildId: number;
+  buildName: string;
   gameName: string;
   scenario: string | null;
   sourceType: string;
   averageFps: number | null;
   p99FrameTimeMs: number | null;
+  hasSensorSummary: boolean;
   createdAt: string;
 };
 
@@ -241,6 +245,26 @@ export function ImportForms({
         hwInfoFile,
       );
 
+      setAvailableSessions((currentSessions) =>
+        currentSessions.map((session) =>
+          String(session.id) === selectedSessionId
+            ? {
+                ...session,
+                hasSensorSummary: true,
+              }
+            : session,
+        ),
+      );
+
+      setLatestImportedSession((currentSession) =>
+        currentSession && String(currentSession.id) === selectedSessionId
+          ? {
+              ...currentSession,
+              hasSensorSummary: true,
+            }
+          : currentSession,
+      );
+
       setHwInfoFile(null);
       setHwInfoInputKey((currentKey) => currentKey + 1);
 
@@ -355,7 +379,7 @@ export function ImportForms({
               label="Target run"
               value={
                 selectedSession
-                  ? `Session #${selectedSession.id} selected`
+                  ? `Session #${selectedSession.id} · ${getSensorLabel(selectedSession)}`
                   : "No session selected"
               }
             />
@@ -559,6 +583,10 @@ function SessionChoiceCard({
             {session.scenario ?? "No scenario"} ·{" "}
             {formatDateLabel(session.createdAt)}
           </p>
+
+          <p className="mt-1 line-clamp-1 text-sm text-zinc-600">
+            {getSessionHardwareLine(session)}
+          </p>
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-2">
@@ -576,6 +604,16 @@ function SessionChoiceCard({
 
           <span
             className={`rounded-full border px-3 py-1 text-xs font-medium ${
+              session.hasSensorSummary
+                ? "border-green-500/30 bg-green-500/10 text-green-300"
+                : "border-violet-950/80 bg-black/30 text-zinc-600"
+            }`}
+          >
+            {getSensorLabel(session)}
+          </span>
+
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${
               selected
                 ? "border-violet-300/50 bg-violet-300/10 text-violet-200"
                 : "border-violet-950/80 bg-black/30 text-zinc-600"
@@ -588,6 +626,7 @@ function SessionChoiceCard({
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <MiniMetric label="Average" value={formatFps(session.averageFps)} />
+
         <MiniMetric
           label="P99"
           value={formatNumber(session.p99FrameTimeMs, " ms")}
@@ -691,6 +730,16 @@ function StatusMessage({ status }: { status: UploadStatus }) {
       {status.message}
     </p>
   );
+}
+
+function getSensorLabel(session: PerformanceSession) {
+  return session.hasSensorSummary ? "HWiNFO" : "No sensors";
+}
+
+function getSessionHardwareLine(session: PerformanceSession) {
+  return `${session.snapshotName} · ${session.buildName} · ${getSensorLabel(
+    session,
+  )}`;
 }
 
 function formatNumber(value: number | null | undefined, suffix = "") {
