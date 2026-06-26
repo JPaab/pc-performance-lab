@@ -102,8 +102,12 @@ export default async function BuildsPage() {
               </div>
 
               <div className="grid gap-4">
-                {builds.map((build) => (
-                  <BuildCard key={build.id} build={build} />
+                {builds.map((build, index) => (
+                  <BuildCard
+                    key={build.id}
+                    build={build}
+                    displayNumber={index + 1}
+                  />
                 ))}
               </div>
 
@@ -121,13 +125,19 @@ export default async function BuildsPage() {
   );
 }
 
-function BuildCard({ build }: { build: PcBuild }) {
+function BuildCard({
+  build,
+  displayNumber,
+}: {
+  build: PcBuild;
+  displayNumber: number;
+}) {
   return (
     <article className="group rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-5 shadow-2xl shadow-black/20 transition hover:border-violet-700/80">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-600">
-            Build #{build.id}
+            Build #{displayNumber}
           </p>
 
           <h3 className="mt-2 truncate text-2xl font-semibold tracking-[-0.04em] text-zinc-50">
@@ -149,7 +159,7 @@ function BuildCard({ build }: { build: PcBuild }) {
 
           <DeleteButton
             endpoint={`/api/builds/${build.id}`}
-            confirmMessage={`Delete build "${build.name}"?`}
+            confirmMessage={`Delete build #${displayNumber} "${build.name}"?`}
             className="h-10 rounded-full border border-rose-900/70 bg-rose-950/20 px-4 text-rose-300 transition hover:border-rose-400 hover:bg-rose-950/30 hover:text-rose-200 disabled:opacity-50"
           />
         </div>

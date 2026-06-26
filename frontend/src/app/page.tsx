@@ -140,6 +140,16 @@ function getDashboardCounts(summary: DashboardSummary): DashboardCounts {
   };
 }
 
+function getDisplayNumberById(items: { id: number }[], id?: number | null) {
+  if (!id) {
+    return null;
+  }
+
+  const index = items.findIndex((item) => item.id === id);
+
+  return index === -1 ? null : index + 1;
+}
+
 function getBestSessionByAverage(sessions: SessionSummary[]) {
   return sessions.reduce<SessionSummary | null>((best, session) => {
     if (session.averageFps === null) {
@@ -242,6 +252,14 @@ export default async function HomePage() {
     ? mergeDashboardWithSessions(summary, sessions)
     : null;
 
+  const bestSessionDisplayNumber = dashboardSummary
+    ? getDisplayNumberById(sessions, dashboardSummary.bestAverageFpsSession?.id)
+    : null;
+
+  const latestSessionDisplayNumber = dashboardSummary
+    ? getDisplayNumberById(sessions, dashboardSummary.latestSession?.id)
+    : null;
+
   return (
     <>
       <AppHeader />
@@ -252,12 +270,18 @@ export default async function HomePage() {
             <BackendUnavailable />
           ) : (
             <>
-              <Hero summary={dashboardSummary} />
+              <Hero
+                summary={dashboardSummary}
+                bestSessionDisplayNumber={bestSessionDisplayNumber}
+              />
               <Workflow
                 summary={dashboardSummary}
                 counts={getDashboardCounts(dashboardSummary)}
               />
-              <RunHighlights summary={dashboardSummary} />
+              <RunHighlights
+                summary={dashboardSummary}
+                latestSessionDisplayNumber={latestSessionDisplayNumber}
+              />
             </>
           )}
         </div>
@@ -266,7 +290,13 @@ export default async function HomePage() {
   );
 }
 
-function Hero({ summary }: { summary: DashboardSummary }) {
+function Hero({
+  summary,
+  bestSessionDisplayNumber,
+}: {
+  summary: DashboardSummary;
+  bestSessionDisplayNumber: number | null;
+}) {
   return (
     <section className="relative overflow-visible rounded-[2rem] border border-violet-950/70 bg-[#0d0716]/80 shadow-2xl shadow-black/30">
       <div className="grid lg:grid-cols-[1.12fr_0.88fr]">
@@ -292,7 +322,10 @@ function Hero({ summary }: { summary: DashboardSummary }) {
           </div>
         </div>
 
-        <DashboardBestOverallCard session={summary.bestAverageFpsSession} />
+        <DashboardBestOverallCard
+          session={summary.bestAverageFpsSession}
+          displayNumber={bestSessionDisplayNumber}
+        />
       </div>
     </section>
   );
@@ -492,16 +525,35 @@ function WorkflowStep({
   );
 }
 
-function RunHighlights({ summary }: { summary: DashboardSummary }) {
+function RunHighlights({
+  summary,
+  latestSessionDisplayNumber,
+}: {
+  summary: DashboardSummary;
+  latestSessionDisplayNumber: number | null;
+}) {
   return (
     <section className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-      <LatestRunFeel session={summary.latestSession} />
-      <LatestInfo summary={summary} />
+      <LatestRunFeel
+        session={summary.latestSession}
+        displayNumber={latestSessionDisplayNumber}
+      />
+
+      <LatestInfo
+        summary={summary}
+        latestSessionDisplayNumber={latestSessionDisplayNumber}
+      />
     </section>
   );
 }
 
-function LatestRunFeel({ session }: { session: SessionSummary | null }) {
+function LatestRunFeel({
+  session,
+  displayNumber,
+}: {
+  session: SessionSummary | null;
+  displayNumber: number | null;
+}) {
   const latestFeel = session ? getRunFeel(session) : null;
   const hardwareLine = getSessionHardwareLine(session);
 
@@ -536,7 +588,8 @@ function LatestRunFeel({ session }: { session: SessionSummary | null }) {
             </p>
 
             <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
-              {session.scenario ?? "No scenario"} · Session #{session.id}
+              {session.scenario ?? "No scenario"} · Run #
+              {displayNumber ?? session.id}
             </p>
 
             {hardwareLine && (
@@ -578,7 +631,13 @@ function LatestRunFeel({ session }: { session: SessionSummary | null }) {
   );
 }
 
-function LatestInfo({ summary }: { summary: DashboardSummary }) {
+function LatestInfo({
+  summary,
+  latestSessionDisplayNumber,
+}: {
+  summary: DashboardSummary;
+  latestSessionDisplayNumber: number | null;
+}) {
   return (
     <section className="rounded-3xl border border-violet-950/70 bg-[#0d0716]/80 p-6 shadow-2xl shadow-black/25">
       <p className="text-sm font-medium uppercase tracking-[0.25em] text-violet-300">
@@ -622,7 +681,9 @@ function LatestInfo({ summary }: { summary: DashboardSummary }) {
           label="Run"
           title={
             summary.latestSession
-              ? `${summary.latestSession.gameName} · Session #${summary.latestSession.id}`
+              ? `${summary.latestSession.gameName} · Run #${
+                  latestSessionDisplayNumber ?? summary.latestSession.id
+                }`
               : "No run"
           }
           detail={
@@ -639,11 +700,7 @@ function LatestInfo({ summary }: { summary: DashboardSummary }) {
 
         <LatestInfoRow
           label="Sensors"
-          title={
-            summary.latestSensorSummary
-              ? `HWiNFO summary #${summary.latestSensorSummary.id}`
-              : "No HWiNFO"
-          }
+          title={summary.latestSensorSummary ? "HWiNFO attached" : "No HWiNFO"}
           detail={
             summary.latestSensorSummary
               ? `${summary.latestSensorSummary.sampleCount} samples · CPU ${formatNumber(

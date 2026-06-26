@@ -117,6 +117,14 @@ export function ImportForms({
       (session) => String(session.id) === selectedSessionId,
     ) ?? null;
 
+  const selectedSnapshotDisplayNumber = selectedSnapshot
+    ? getDisplayNumberById(snapshots, selectedSnapshot.id)
+    : null;
+
+  const selectedSessionDisplayNumber = selectedSession
+    ? getDisplayNumberById(availableSessions, selectedSession.id)
+    : null;
+
   useEffect(() => {
     setAvailableSessions(sessions);
 
@@ -197,7 +205,7 @@ export function ImportForms({
 
       setCapFrameXStatus({
         tone: "success",
-        message: `Session #${createdSession.id} created. HWiNFO target switched to this run.`,
+        message: "Run #1 created. HWiNFO target switched to this run.",
       });
 
       router.refresh();
@@ -270,7 +278,9 @@ export function ImportForms({
 
       setHwInfoStatus({
         tone: "success",
-        message: `HWiNFO sensor summary attached to session #${selectedSessionId}.`,
+        message: `HWiNFO sensor summary attached to run #${
+          selectedSessionDisplayNumber ?? selectedSessionId
+        }.`,
       });
 
       router.refresh();
@@ -317,7 +327,7 @@ export function ImportForms({
               label="Target tuning state"
               value={
                 selectedSnapshot
-                  ? `Snapshot #${selectedSnapshot.id} selected`
+                  ? `Tuning state #${selectedSnapshotDisplayNumber ?? selectedSnapshot.id} selected`
                   : "No snapshot selected"
               }
             />
@@ -331,10 +341,11 @@ export function ImportForms({
               />
             ) : (
               <div className="grid max-h-[420px] gap-3 overflow-y-auto pr-1">
-                {snapshots.map((snapshot) => (
+                {snapshots.map((snapshot, index) => (
                   <SnapshotChoiceCard
                     key={snapshot.id}
                     snapshot={snapshot}
+                    displayNumber={index + 1}
                     buildName={
                       buildNameById.get(snapshot.buildId) ??
                       `Build #${snapshot.buildId}`
@@ -379,7 +390,11 @@ export function ImportForms({
               label="Target run"
               value={
                 selectedSession
-                  ? `Session #${selectedSession.id} · ${getSensorLabel(selectedSession)}`
+                  ? `Run #${
+                      availableSessions.findIndex(
+                        (session) => session.id === selectedSession.id,
+                      ) + 1
+                    } · ${getSensorLabel(selectedSession)}`
                   : "No session selected"
               }
             />
@@ -397,6 +412,7 @@ export function ImportForms({
                   <SessionChoiceCard
                     key={session.id}
                     session={session}
+                    displayNumber={index + 1}
                     selected={String(session.id) === selectedSessionId}
                     latest={index === 0}
                     freshlyImported={Boolean(
@@ -482,11 +498,13 @@ function CardSelectorHeader({
 
 function SnapshotChoiceCard({
   snapshot,
+  displayNumber,
   buildName,
   selected,
   onSelect,
 }: {
   snapshot: HardwareSnapshot;
+  displayNumber: number;
   buildName: string;
   selected: boolean;
   onSelect: () => void;
@@ -504,7 +522,7 @@ function SnapshotChoiceCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
-            Snapshot #{snapshot.id}
+            Tuning state #{displayNumber}
           </p>
 
           <p className="mt-2 truncate font-semibold text-zinc-100">
@@ -546,12 +564,14 @@ function SnapshotChoiceCard({
 
 function SessionChoiceCard({
   session,
+  displayNumber,
   selected,
   latest,
   freshlyImported,
   onSelect,
 }: {
   session: PerformanceSession;
+  displayNumber: number;
   selected: boolean;
   latest: boolean;
   freshlyImported: boolean;
@@ -572,7 +592,7 @@ function SessionChoiceCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-[0.22em] text-zinc-600">
-            Session #{session.id}
+            Run #{displayNumber}
           </p>
 
           <p className="mt-2 truncate font-semibold text-zinc-100">
@@ -740,6 +760,12 @@ function getSessionHardwareLine(session: PerformanceSession) {
   return `${session.snapshotName} · ${session.buildName} · ${getSensorLabel(
     session,
   )}`;
+}
+
+function getDisplayNumberById(items: { id: number }[], id: number) {
+  const index = items.findIndex((item) => item.id === id);
+
+  return index === -1 ? null : index + 1;
 }
 
 function formatNumber(value: number | null | undefined, suffix = "") {

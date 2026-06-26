@@ -103,6 +103,24 @@ async function getSession(id: string): Promise<PerformanceSession | null> {
   }
 }
 
+async function getSessions(): Promise<PerformanceSession[]> {
+  try {
+    const response = await fetch(buildApiUrl("/api/sessions"), {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const sessions = (await response.json()) as PerformanceSession[];
+
+    return sessions.sort((a, b) => b.id - a.id);
+  } catch {
+    return [];
+  }
+}
+
 async function getSensorSummaries(id: string): Promise<SensorSummary[]> {
   try {
     const response = await fetch(
@@ -152,6 +170,12 @@ function formatDuration(seconds: number | null | undefined) {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
+function getDisplayNumberById(items: { id: number }[], id: number) {
+  const index = items.findIndex((item) => item.id === id);
+
+  return index === -1 ? null : index + 1;
+}
+
 export default async function SessionDetailPage({
   params,
 }: {
@@ -159,9 +183,10 @@ export default async function SessionDetailPage({
 }) {
   const { id } = await params;
 
-  const [session, sensorSummaries] = await Promise.all([
+  const [session, sensorSummaries, sessions] = await Promise.all([
     getSession(id),
     getSensorSummaries(id),
+    getSessions(),
   ]);
 
   if (!session) {
@@ -187,6 +212,7 @@ export default async function SessionDetailPage({
   }
 
   const latestSensorSummary = sensorSummaries[0] ?? null;
+  const sessionDisplayNumber = getDisplayNumberById(sessions, session.id);
 
   return (
     <>
@@ -196,7 +222,10 @@ export default async function SessionDetailPage({
         <div className="mx-auto max-w-7xl">
           <BackLink />
 
-          <SessionHero session={session} />
+          <SessionHero
+            session={session}
+            displayNumber={sessionDisplayNumber ?? session.id}
+          />
 
           <PerformancePanel session={session} />
 
@@ -220,13 +249,19 @@ function BackLink() {
   );
 }
 
-function SessionHero({ session }: { session: PerformanceSession }) {
+function SessionHero({
+  session,
+  displayNumber,
+}: {
+  session: PerformanceSession;
+  displayNumber: number;
+}) {
   return (
     <section className="mt-8 overflow-hidden rounded-[2rem] border border-violet-950/70 bg-[#0d0716]/80 shadow-2xl shadow-black/30">
       <div className="grid lg:grid-cols-[1.15fr_0.85fr]">
         <div className="min-w-0 p-8 md:p-10">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-violet-300">
-            Session #{session.id}
+            Run #{displayNumber}
           </p>
 
           <h1 className="mt-4 truncate text-5xl font-black tracking-[-0.06em] text-zinc-50 md:text-7xl">
@@ -251,7 +286,7 @@ function SessionHero({ session }: { session: PerformanceSession }) {
 
             <DeleteButton
               endpoint={`/api/sessions/${session.id}`}
-              confirmMessage={`Delete run #${session.id}?`}
+              confirmMessage={`Delete run #${displayNumber} (${session.gameName})?`}
               redirectTo="/sessions"
               className="rounded-full border border-rose-900/70 bg-rose-950/20 px-5 py-3 text-sm font-medium text-rose-300 transition hover:border-rose-400 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
             />

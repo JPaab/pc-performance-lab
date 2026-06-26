@@ -157,6 +157,16 @@ function findSessionById(sessions: PerformanceSession[], id?: string) {
   return sessions.find((session) => String(session.id) === id) ?? null;
 }
 
+function getDisplayNumberById(items: { id: number }[], id?: number | null) {
+  if (!id) {
+    return null;
+  }
+
+  const index = items.findIndex((item) => item.id === id);
+
+  return index === -1 ? null : index + 1;
+}
+
 function findMetric(metrics: MetricComparison[], names: string[]) {
   return (
     metrics.find((metric) => {
@@ -334,6 +344,16 @@ export default async function ComparePage({
   const baselineSession = findSessionById(sessions, params.s1);
   const comparisonSession = findSessionById(sessions, params.s2);
 
+  const baselineDisplayNumber = getDisplayNumberById(
+    sessions,
+    baselineSession?.id,
+  );
+
+  const comparisonDisplayNumber = getDisplayNumberById(
+    sessions,
+    comparisonSession?.id,
+  );
+
   return (
     <>
       <AppHeader />
@@ -376,6 +396,8 @@ export default async function ComparePage({
                 comparison={comparison}
                 baselineSession={baselineSession}
                 comparisonSession={comparisonSession}
+                baselineDisplayNumber={baselineDisplayNumber}
+                comparisonDisplayNumber={comparisonDisplayNumber}
               />
 
               <section className="mt-8 grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
@@ -396,10 +418,14 @@ function ComparisonDecision({
   comparison,
   baselineSession,
   comparisonSession,
+  baselineDisplayNumber,
+  comparisonDisplayNumber,
 }: {
   comparison: PerformanceComparisonResult;
   baselineSession: PerformanceSession | null;
   comparisonSession: PerformanceSession | null;
+  baselineDisplayNumber: number | null;
+  comparisonDisplayNumber: number | null;
 }) {
   const decision = getDecision(comparison);
 
@@ -435,6 +461,7 @@ function ComparisonDecision({
           <RunSummaryCard
             label="Baseline"
             sessionId={comparison.baselineSessionId}
+            displayNumber={baselineDisplayNumber}
             title={comparison.baselineLabel}
             session={baselineSession}
           />
@@ -442,6 +469,7 @@ function ComparisonDecision({
           <RunSummaryCard
             label="Candidate"
             sessionId={comparison.comparisonSessionId}
+            displayNumber={comparisonDisplayNumber}
             title={comparison.comparisonLabel}
             session={comparisonSession}
             highlighted
@@ -455,12 +483,14 @@ function ComparisonDecision({
 function RunSummaryCard({
   label,
   sessionId,
+  displayNumber,
   title,
   session,
   highlighted = false,
 }: {
   label: string;
   sessionId: number;
+  displayNumber: number | null;
   title: string;
   session: PerformanceSession | null;
   highlighted?: boolean;
@@ -484,7 +514,9 @@ function RunSummaryCard({
           </h3>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <p className="text-sm text-zinc-500">Session #{sessionId}</p>
+            <p className="text-sm text-zinc-500">
+              Run #{displayNumber ?? sessionId}
+            </p>
 
             {session && (
               <span
@@ -846,14 +878,14 @@ function EmptyComparison({ sessions }: { sessions: PerformanceSession[] }) {
 
       {sessions.length > 0 && (
         <div className="mt-6 grid gap-3 lg:grid-cols-2">
-          {sessions.slice(0, 4).map((session) => (
+          {sessions.slice(0, 4).map((session, index) => (
             <Link
               key={session.id}
               href={`/sessions/${session.id}`}
               className="rounded-2xl border border-violet-950/70 bg-black/25 p-4 transition hover:border-violet-400"
             >
               <p className="text-sm font-semibold text-zinc-100">
-                #{session.id} · {session.gameName}
+                Run #{index + 1} · {session.gameName}
               </p>
 
               <p className="mt-1 line-clamp-1 text-sm text-zinc-500">

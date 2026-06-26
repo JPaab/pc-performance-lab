@@ -216,8 +216,12 @@ export default async function SessionsPage() {
             <EmptyState />
           ) : (
             <section className="mt-8 grid gap-5 lg:grid-cols-2">
-              {sessions.map((session) => (
-                <SessionCard key={session.id} session={session} />
+              {sessions.map((session, index) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  displayNumber={index + 1}
+                />
               ))}
             </section>
           )}
@@ -227,7 +231,13 @@ export default async function SessionsPage() {
   );
 }
 
-function SessionCard({ session }: { session: PerformanceSession }) {
+function SessionCard({
+  session,
+  displayNumber,
+}: {
+  session: PerformanceSession;
+  displayNumber: number;
+}) {
   const feel = getSessionFeel(session);
 
   return (
@@ -235,7 +245,7 @@ function SessionCard({ session }: { session: PerformanceSession }) {
       <div className="flex min-w-0 items-start justify-between gap-5">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-600">
-            Session #{session.id}
+            Run #{displayNumber}
           </p>
 
           <h2 className="mt-2 truncate text-2xl font-semibold text-zinc-50">
@@ -300,7 +310,7 @@ function SessionCard({ session }: { session: PerformanceSession }) {
 
           <DeleteButton
             endpoint={`/api/sessions/${session.id}`}
-            confirmMessage={`Delete run #${session.id}?`}
+            confirmMessage={`Delete run #${displayNumber} (${session.gameName})?`}
             className="h-10 rounded-full border border-rose-900/70 bg-rose-950/20 px-4 text-rose-300 transition hover:border-rose-400 hover:bg-rose-950/30 hover:text-rose-200 disabled:opacity-50"
           />
         </div>

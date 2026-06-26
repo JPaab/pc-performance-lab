@@ -24,8 +24,10 @@ type CardMode = "winner" | "about";
 
 export function DashboardBestOverallCard({
   session,
+  displayNumber,
 }: {
   session: SessionSummary | null;
+  displayNumber: number | null;
 }) {
   const [mode, setMode] = useState<CardMode>("winner");
 
@@ -56,7 +58,7 @@ export function DashboardBestOverallCard({
       </button>
 
       {mode === "winner" ? (
-        <BestRunView session={session} />
+        <BestRunView session={session} displayNumber={displayNumber} />
       ) : (
         <AppExplanation compact />
       )}
@@ -64,7 +66,13 @@ export function DashboardBestOverallCard({
   );
 }
 
-function BestRunView({ session }: { session: SessionSummary }) {
+function BestRunView({
+  session,
+  displayNumber,
+}: {
+  session: SessionSummary;
+  displayNumber: number | null;
+}) {
   const hardwareLine = getSessionHardwareLine(session);
 
   return (
@@ -94,7 +102,8 @@ function BestRunView({ session }: { session: SessionSummary }) {
         </p>
 
         <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
-          {session.scenario ?? "No scenario"} · Session #{session.id}
+          {session.scenario ?? "No scenario"} · Run #
+          {displayNumber ?? session.id}
         </p>
 
         {hardwareLine && (

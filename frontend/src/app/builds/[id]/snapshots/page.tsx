@@ -56,6 +56,24 @@ async function getBuild(id: string): Promise<PcBuild | null> {
   }
 }
 
+async function getBuilds(): Promise<PcBuild[]> {
+  try {
+    const response = await fetch(buildApiUrl("/api/builds"), {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const builds = (await response.json()) as PcBuild[];
+
+    return builds.sort((a, b) => b.id - a.id);
+  } catch {
+    return [];
+  }
+}
+
 async function getSnapshots(buildId: string): Promise<HardwareSnapshot[]> {
   try {
     const response = await fetch(
@@ -95,6 +113,12 @@ function formatDateLabel(value: string | null | undefined) {
   });
 }
 
+function getDisplayNumberById(items: { id: number }[], id: number) {
+  const index = items.findIndex((item) => item.id === id);
+
+  return index === -1 ? null : index + 1;
+}
+
 export default async function BuildSnapshotsPage({
   params,
 }: {
@@ -102,9 +126,10 @@ export default async function BuildSnapshotsPage({
 }) {
   const { id } = await params;
 
-  const [build, snapshots] = await Promise.all([
+  const [build, snapshots, builds] = await Promise.all([
     getBuild(id),
     getSnapshots(id),
+    getBuilds(),
   ]);
 
   if (!build) {
@@ -134,6 +159,8 @@ export default async function BuildSnapshotsPage({
     );
   }
 
+  const buildDisplayNumber = getDisplayNumberById(builds, build.id);
+
   return (
     <>
       <AppHeader />
@@ -149,7 +176,7 @@ export default async function BuildSnapshotsPage({
             </Link>
 
             <p className="mt-8 text-sm font-medium uppercase tracking-[0.3em] text-violet-300">
-              Build #{build.id}
+              Build #{buildDisplayNumber ?? "—"}
             </p>
 
             <h1 className="mt-3 text-5xl font-black tracking-[-0.06em] md:text-7xl">
@@ -185,8 +212,12 @@ export default async function BuildSnapshotsPage({
               </div>
 
               <div className="grid gap-4">
-                {snapshots.map((snapshot) => (
-                  <SnapshotCard key={snapshot.id} snapshot={snapshot} />
+                {snapshots.map((snapshot, index) => (
+                  <SnapshotCard
+                    key={snapshot.id}
+                    snapshot={snapshot}
+                    displayNumber={index + 1}
+                  />
                 ))}
               </div>
 
@@ -204,7 +235,13 @@ export default async function BuildSnapshotsPage({
   );
 }
 
-function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
+function SnapshotCard({
+  snapshot,
+  displayNumber,
+}: {
+  snapshot: HardwareSnapshot;
+  displayNumber: number;
+}) {
   const tags = snapshot.tweakTags ?? [];
 
   return (
@@ -212,7 +249,7 @@ function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.24em] text-zinc-600">
-            Snapshot #{snapshot.id}
+            Tuning state #{displayNumber}
           </p>
 
           <h3 className="mt-2 truncate text-2xl font-semibold tracking-[-0.04em] text-zinc-50">
@@ -234,7 +271,7 @@ function SnapshotCard({ snapshot }: { snapshot: HardwareSnapshot }) {
 
           <DeleteButton
             endpoint={`/api/snapshots/${snapshot.id}`}
-            confirmMessage={`Delete snapshot "${snapshot.name}"?`}
+            confirmMessage={`Delete tuning state #${displayNumber} "${snapshot.name}"?`}
             className="h-10 rounded-full border border-rose-900/70 bg-rose-950/20 px-4 text-rose-300 transition hover:border-rose-400 hover:bg-rose-950/30 hover:text-rose-200 disabled:opacity-50"
           />
         </div>

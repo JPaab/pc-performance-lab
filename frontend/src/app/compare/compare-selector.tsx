@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type PerformanceSession = {
   id: number;
@@ -38,6 +38,10 @@ export function CompareSelector({
     comparisonId && comparisonId !== baselineId ? comparisonId : "",
   );
 
+  const displayNumberById = useMemo(() => {
+    return new Map(sessions.map((session, index) => [session.id, index + 1]));
+  }, [sessions]);
+
   const baselineOptions = sessions.filter(
     (session) => String(session.id) !== selectedComparisonId,
   );
@@ -69,6 +73,7 @@ export function CompareSelector({
           label="Baseline"
           name="s1"
           sessions={baselineOptions}
+          displayNumberById={displayNumberById}
           value={selectedBaselineId}
           onChange={setSelectedBaselineId}
         />
@@ -77,6 +82,7 @@ export function CompareSelector({
           label="Candidate"
           name="s2"
           sessions={comparisonOptions}
+          displayNumberById={displayNumberById}
           value={selectedComparisonId}
           onChange={setSelectedComparisonId}
         />
@@ -99,12 +105,14 @@ function SessionSelect({
   label,
   name,
   sessions,
+  displayNumberById,
   value,
   onChange,
 }: {
   label: string;
   name: string;
   sessions: PerformanceSession[];
+  displayNumberById: Map<number, number>;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -123,7 +131,7 @@ function SessionSelect({
 
         {sessions.map((session) => (
           <option key={session.id} value={session.id}>
-            {getSessionOptionLabel(session)}
+            {getSessionOptionLabel(session, displayNumberById)}
           </option>
         ))}
       </select>
@@ -131,8 +139,13 @@ function SessionSelect({
   );
 }
 
-function getSessionOptionLabel(session: PerformanceSession) {
-  return `#${session.id} · ${session.snapshotName} · ${session.buildName} · ${
-    session.gameName
-  } · ${session.hasSensorSummary ? "HWiNFO" : "No sensors"}`;
+function getSessionOptionLabel(
+  session: PerformanceSession,
+  displayNumberById: Map<number, number>,
+) {
+  return `Run #${displayNumberById.get(session.id) ?? session.id} · ${
+    session.snapshotName
+  } · ${session.buildName} · ${session.gameName} · ${
+    session.hasSensorSummary ? "HWiNFO" : "No sensors"
+  }`;
 }
