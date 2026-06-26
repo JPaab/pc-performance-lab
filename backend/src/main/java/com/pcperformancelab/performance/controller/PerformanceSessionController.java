@@ -2,6 +2,7 @@ package com.pcperformancelab.performance.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pcperformancelab.performance.dto.CreatePerformanceSessionRequest;
+import com.pcperformancelab.performance.dto.PerformanceSessionResponse;
 import com.pcperformancelab.performance.importer.CapFrameXImportService;
 import com.pcperformancelab.performance.model.PerformanceSession;
 import com.pcperformancelab.performance.repository.PerformanceSessionRepository;
@@ -46,22 +47,22 @@ public class PerformanceSessionController {
     }
 
     @GetMapping("/snapshots/{snapshotId}/sessions")
-    public List<PerformanceSession> findAllBySnapshotId(@PathVariable Long snapshotId) {
-        return performanceSessionService.findAllBySnapshotId(snapshotId);
+    public List<PerformanceSessionResponse> findAllBySnapshotId(@PathVariable Long snapshotId) {
+        return performanceSessionService.findAllResponsesBySnapshotId(snapshotId);
     }
 
     @GetMapping("/sessions")
-    public List<PerformanceSession> findAll() {
-        return performanceSessionService.findAll();
+    public List<PerformanceSessionResponse> findAll() {
+        return performanceSessionService.findAllResponses();
     }
 
     @GetMapping("/sessions/{id}")
-    public PerformanceSession findById(@PathVariable Long id) {
-        return performanceSessionService.findById(id);
+    public PerformanceSessionResponse findById(@PathVariable Long id) {
+        return performanceSessionService.findResponseById(id);
     }
 
     @PostMapping("/snapshots/{snapshotId}/sessions")
-    public ResponseEntity<PerformanceSession> create(
+    public ResponseEntity<PerformanceSessionResponse> create(
             @PathVariable Long snapshotId,
             @Valid @RequestBody CreatePerformanceSessionRequest request
     ) {
@@ -69,14 +70,14 @@ public class PerformanceSessionController {
 
         return ResponseEntity
                 .created(URI.create("/api/sessions/" + createdSession.getId()))
-                .body(createdSession);
+                .body(performanceSessionService.toResponse(createdSession));
     }
 
     @PostMapping(
             value = "/snapshots/{snapshotId}/sessions/import/json",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
-    public ResponseEntity<PerformanceSession> importFromJson(
+    public ResponseEntity<PerformanceSessionResponse> importFromJson(
             @PathVariable Long snapshotId,
             @RequestParam("file") MultipartFile file
     ) {
@@ -89,14 +90,14 @@ public class PerformanceSessionController {
 
         return ResponseEntity
                 .created(URI.create("/api/sessions/" + createdSession.getId()))
-                .body(createdSession);
+                .body(performanceSessionService.toResponse(createdSession));
     }
 
     @PostMapping(
             value = "/snapshots/{snapshotId}/sessions/import/capframex",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE
     )
-    public ResponseEntity<PerformanceSession> importFromCapFrameX(
+    public ResponseEntity<PerformanceSessionResponse> importFromCapFrameX(
             @PathVariable Long snapshotId,
             @RequestParam("file") MultipartFile file
     ) {
@@ -109,7 +110,7 @@ public class PerformanceSessionController {
 
         return ResponseEntity
                 .created(URI.create("/api/sessions/" + createdSession.getId()))
-                .body(createdSession);
+                .body(performanceSessionService.toResponse(createdSession));
     }
 
     @DeleteMapping("/sessions/{id}")

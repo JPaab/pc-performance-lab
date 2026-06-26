@@ -104,6 +104,18 @@ public class PerformanceSession {
         return snapshot.getId();
     }
 
+    public String getSnapshotName() {
+        return snapshot.getName();
+    }
+
+    public Long getBuildId() {
+        return snapshot.getBuildId();
+    }
+
+    public String getBuildName() {
+        return snapshot.getBuildName();
+    }
+
     public String getGameName() {
         return gameName;
     }

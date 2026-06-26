@@ -103,6 +103,10 @@ public class HardwareSnapshot {
         return build.getId();
     }
 
+    public String getBuildName() {
+        return build.getName();
+    }
+
     public String getName() {
         return name;
     }
