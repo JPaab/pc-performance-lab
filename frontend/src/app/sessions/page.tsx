@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { AppHeader } from "@/components/app-header";
-import { buildApiUrl } from "@/lib/api";
 import { DeleteButton } from "@/components/delete-button";
+import { buildApiUrl } from "@/lib/api";
 
 type PerformanceSession = {
   id: number;
   snapshotId: number;
+  snapshotName: string;
+  buildId: number;
+  buildName: string;
   gameName: string;
   scenario: string | null;
   sourceType: string;
@@ -18,6 +21,7 @@ type PerformanceSession = {
   p999FrameTimeMs: number | null;
   stutterCount: number | null;
   droppedFrames: number | null;
+  hasSensorSummary: boolean;
   tags: string[];
   notes: string | null;
   createdAt: string;
@@ -194,14 +198,17 @@ export default async function SessionsPage() {
 
           <section className="mt-8 grid overflow-hidden rounded-3xl border border-violet-950/70 bg-[#0d0716]/70 sm:grid-cols-4">
             <SummaryItem label="Total runs" value={sessions.length} />
+
             <SummaryItem
               label="Best average"
               value={formatFps(bestAverage?.averageFps)}
             />
+
             <SummaryItem
               label="Best 1% low"
               value={formatFps(bestLow?.onePercentLowFps)}
             />
+
             <SummaryItem label="Clean runs" value={cleanRuns} />
           </section>
 
@@ -238,11 +245,27 @@ function SessionCard({ session }: { session: PerformanceSession }) {
           <p className="mt-2 line-clamp-2 text-sm text-zinc-500">
             {session.scenario ?? "No scenario"}
           </p>
+
+          <p className="mt-2 truncate text-sm text-zinc-600">
+            {session.snapshotName} · {session.buildName}
+          </p>
         </div>
 
-        <span className="shrink-0 rounded-full border border-violet-900/80 bg-violet-950/30 px-3 py-1 text-xs font-medium text-violet-200">
-          {session.sourceType}
-        </span>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <span className="rounded-full border border-violet-900/80 bg-violet-950/30 px-3 py-1 text-xs font-medium text-violet-200">
+            {session.sourceType}
+          </span>
+
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-medium ${
+              session.hasSensorSummary
+                ? "border-green-500/30 bg-green-500/10 text-green-300"
+                : "border-violet-950/80 bg-black/20 text-zinc-600"
+            }`}
+          >
+            {session.hasSensorSummary ? "HWiNFO" : "No sensors"}
+          </span>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-5 md:grid-cols-[1fr_auto] md:items-end">
@@ -311,10 +334,12 @@ function SessionCard({ session }: { session: PerformanceSession }) {
           label="Duration"
           value={formatDuration(session.durationSeconds)}
         />
+
         <SmallInfo
           label="0.1% low"
           value={formatFps(session.zeroPointOnePercentLowFps)}
         />
+
         <SmallInfo
           label="Captured"
           value={formatDateLabel(session.createdAt)}
@@ -517,6 +542,7 @@ function SmallInfo({
   return (
     <div className="min-w-0 border-l border-violet-950/70 pl-3">
       <p className="text-xs text-zinc-600">{label}</p>
+
       <p className="mt-1 truncate text-sm font-medium text-zinc-300">{value}</p>
     </div>
   );
