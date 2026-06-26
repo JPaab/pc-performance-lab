@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { postJson } from "@/lib/api";
+import { buildApiUrl, postJson } from "@/lib/api";
 
 type CreateHardwareSnapshotRequest = {
   name: string;
@@ -17,10 +17,28 @@ type CreateHardwareSnapshotRequest = {
   biosVersion: string;
   operatingSystemProfile: string;
   powerPlan: string;
-  hagsEnabled: boolean;
+  hagsEnabled: boolean | null;
   gpuDriver: string;
   tweakTags: string[];
   notes: string;
+};
+
+type DetectedTuningStateResponse = {
+  biosVersion: string | null;
+  operatingSystemProfile: string | null;
+  windowsBuild: string | null;
+  powerPlan: string | null;
+  hagsEnabled: boolean | null;
+  gameModeEnabled: boolean | null;
+  gameDvrEnabled: boolean | null;
+  appCaptureEnabled: boolean | null;
+  vrrEnabled: boolean | null;
+  windowedOptimizationsEnabled: boolean | null;
+  vbsEnabled: boolean | null;
+  memoryIntegrityEnabled: boolean | null;
+  hypervisorPresent: boolean | null;
+  defenderRealtimeProtectionEnabled: boolean | null;
+  gpuDriver: string | null;
 };
 
 type HardwareSnapshot = CreateHardwareSnapshotRequest & {
@@ -39,14 +57,14 @@ const initialForm: CreateHardwareSnapshotRequest = {
   cpuOverclock: "",
   ramProfile: "",
   ramTimings: "",
-  trfc: 530,
-  trefi: 65535,
-  commandRate: "1N",
-  gearMode: "Gear 1",
+  trfc: null,
+  trefi: null,
+  commandRate: "",
+  gearMode: "",
   biosVersion: "",
   operatingSystemProfile: "",
   powerPlan: "",
-  hagsEnabled: true,
+  hagsEnabled: null,
   gpuDriver: "",
   tweakTags: [],
   notes: "",
@@ -62,6 +80,7 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDetectingConfig, setIsDetectingConfig] = useState(false);
 
   function updateField(
     field: keyof CreateHardwareSnapshotRequest,
@@ -78,6 +97,64 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean);
+  }
+
+  async function handleDetectCurrentConfig() {
+    try {
+      setIsDetectingConfig(true);
+      setStatus({
+        tone: "idle",
+        message: "Detecting current tuning config...",
+      });
+
+      const response = await fetch(
+        buildApiUrl("/api/hardware/current-config"),
+        {
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Could not detect current config.");
+      }
+
+      const detectedConfig =
+        (await response.json()) as DetectedTuningStateResponse;
+
+      setForm((currentForm) => ({
+        ...currentForm,
+        biosVersion: detectedConfig.biosVersion ?? currentForm.biosVersion,
+        operatingSystemProfile:
+          formatDetectedOsProfile(detectedConfig) ??
+          currentForm.operatingSystemProfile,
+        powerPlan: detectedConfig.powerPlan ?? currentForm.powerPlan,
+        hagsEnabled:
+          detectedConfig.hagsEnabled === null
+            ? currentForm.hagsEnabled
+            : detectedConfig.hagsEnabled,
+        gpuDriver: detectedConfig.gpuDriver ?? currentForm.gpuDriver,
+      }));
+
+      setTagsInput((currentTags) =>
+        mergeTags(currentTags, createDetectedTags(detectedConfig)),
+      );
+
+      setStatus({
+        tone: "success",
+        message:
+          "Current config detected. Review the generated tags before saving.",
+      });
+    } catch (error) {
+      setStatus({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Could not detect current config.",
+      });
+    } finally {
+      setIsDetectingConfig(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -103,14 +180,14 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
         tweakTags: parseTags(tagsInput),
       };
 
-      const createdSnapshot = await postJson<
-        HardwareSnapshot,
-        CreateHardwareSnapshotRequest
-      >(`/api/builds/${buildId}/snapshots`, requestBody);
+      await postJson<HardwareSnapshot, CreateHardwareSnapshotRequest>(
+        `/api/builds/${buildId}/snapshots`,
+        requestBody,
+      );
 
       setStatus({
         tone: "success",
-        message: `Snapshot #${createdSnapshot.id} created. Benchmark import unlocked.`,
+        message: "Tuning state created. Benchmark import unlocked.",
       });
 
       setForm(initialForm);
@@ -140,6 +217,30 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
       <p className="mt-2 text-sm leading-6 text-zinc-500">
         Save the exact tuning state before importing a run.
       </p>
+
+      <div className="mt-5 rounded-2xl border border-violet-950/70 bg-black/25 p-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-medium text-zinc-200">
+              Detect current config
+            </p>
+
+            <p className="mt-1 text-sm leading-6 text-zinc-600">
+              Pull BIOS, OS build, power plan, GPU driver and Windows security
+              flags from the local backend.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleDetectCurrentConfig}
+            disabled={isDetectingConfig || isSubmitting}
+            className="shrink-0 rounded-full border border-violet-900/80 bg-violet-950/20 px-5 py-3 text-sm font-medium text-zinc-300 transition hover:border-violet-300 hover:text-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isDetectingConfig ? "Detecting..." : "Detect current config"}
+          </button>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="mt-6 grid gap-5">
         <div className="grid gap-4 md:grid-cols-2">
@@ -187,21 +288,6 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
             onChange={(value) => updateField("gpuDriver", value)}
             placeholder="596.36"
           />
-
-          <label className="flex min-w-0 items-center gap-3 self-end rounded-2xl border border-violet-950/80 bg-black/40 px-4 py-3">
-            <input
-              type="checkbox"
-              checked={form.hagsEnabled}
-              onChange={(event) =>
-                updateField("hagsEnabled", event.target.checked)
-              }
-              className="h-4 w-4 shrink-0 accent-violet-300"
-            />
-
-            <span className="whitespace-nowrap text-sm text-zinc-300">
-              HAGS enabled
-            </span>
-          </label>
         </div>
 
         <details className="group rounded-2xl border border-violet-950/70 bg-black/25 p-4">
@@ -279,7 +365,7 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
 
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isDetectingConfig}
           className="rounded-2xl bg-violet-300 px-6 py-3 font-semibold text-black transition hover:bg-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? "Creating..." : "Create tuning state"}
@@ -296,6 +382,57 @@ export function CreateSnapshotForm({ buildId }: { buildId: number }) {
       </form>
     </section>
   );
+}
+
+function formatDetectedOsProfile(config: DetectedTuningStateResponse) {
+  if (!config.operatingSystemProfile && !config.windowsBuild) {
+    return null;
+  }
+
+  if (config.operatingSystemProfile && config.windowsBuild) {
+    return `${config.operatingSystemProfile} (Build ${config.windowsBuild})`;
+  }
+
+  return config.operatingSystemProfile ?? `Build ${config.windowsBuild}`;
+}
+
+function createDetectedTags(config: DetectedTuningStateResponse) {
+  return [
+    getBooleanTag("HAGS", config.hagsEnabled),
+    getBooleanTag("GAME_MODE", config.gameModeEnabled),
+    getBooleanTag("GAME_DVR", config.gameDvrEnabled),
+    getBooleanTag("APP_CAPTURE", config.appCaptureEnabled),
+    getBooleanTag("VRR", config.vrrEnabled),
+    getBooleanTag(
+      "WINDOWED_OPTIMIZATIONS",
+      config.windowedOptimizationsEnabled,
+    ),
+    getBooleanTag("VBS", config.vbsEnabled),
+    getBooleanTag("MEMORY_INTEGRITY", config.memoryIntegrityEnabled),
+    getBooleanTag("HYPERVISOR", config.hypervisorPresent),
+    getBooleanTag("DEFENDER", config.defenderRealtimeProtectionEnabled),
+  ].filter((tag): tag is string => Boolean(tag));
+}
+
+function getBooleanTag(label: string, value: boolean | null) {
+  if (value === null) {
+    return `${label}_UNKNOWN`;
+  }
+
+  return value ? `${label}_ON` : `${label}_OFF`;
+}
+
+function mergeTags(currentTags: string, newTags: string[]) {
+  const mergedTags = new Set([...parseTagString(currentTags), ...newTags]);
+
+  return Array.from(mergedTags).join(", ");
+}
+
+function parseTagString(value: string) {
+  return value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 }
 
 function FieldShell({
